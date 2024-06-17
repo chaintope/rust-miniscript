@@ -366,7 +366,7 @@ impl<Pk: MiniscriptKey> Wpkh<Pk> {
 impl<Pk: MiniscriptKey + ToPublicKey> Wpkh<Pk> {
     /// Obtains the corresponding script pubkey for this descriptor.
     pub fn script_pubkey(&self) -> ScriptBuf {
-        let addr = Address::p2wpkh(&self.pk.to_public_key(), Network::Bitcoin)
+        let addr = Address::p2wpkh(&self.pk.to_public_key(), Network::Prod)
             .expect("wpkh descriptors have compressed keys");
         addr.script_pubkey()
     }
@@ -386,7 +386,7 @@ impl<Pk: MiniscriptKey + ToPublicKey> Wpkh<Pk> {
         // the previous txo's scriptPubKey.
         // The item 5:
         //     - For P2WPKH witness program, the scriptCode is `0x1976a914{20-byte-pubkey-hash}88ac`.
-        let addr = Address::p2pkh(&self.pk.to_public_key(), Network::Bitcoin);
+        let addr = Address::p2pkh(&self.pk.to_public_key(), Network::Prod);
         addr.script_pubkey()
     }
 

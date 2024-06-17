@@ -52,7 +52,7 @@
 //!
 //! // Derive the P2SH address.
 //! assert_eq!(
-//!     desc.address(tapyrus::Network::Bitcoin).unwrap().to_string(),
+//!     desc.address(tapyrus::Network::Prod).unwrap().to_string(),
 //!     "3CJxbQBfWAe1ZkKiGQNEYrioV73ZwvBWns"
 //! );
 //!

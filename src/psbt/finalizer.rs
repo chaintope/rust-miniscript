@@ -172,7 +172,7 @@ fn get_descriptor(psbt: &Psbt, index: usize) -> Result<Descriptor<PublicKey>, In
             // Partial sigs loses the compressed flag that is necessary
             // TODO: See https://github.com/rust-bitcoin/rust-bitcoin/pull/836
             // The type checker will fail again after we update to 0.28 and this can be removed
-            let addr = tapyrus::Address::p2pkh(&pk, tapyrus::Network::tapyrus);
+            let addr = tapyrus::Address::p2pkh(&pk, tapyrus::Network::Prod);
             *script_pubkey == addr.script_pubkey()
         });
         match partial_sig_contains_pk {
@@ -184,7 +184,7 @@ fn get_descriptor(psbt: &Psbt, index: usize) -> Result<Descriptor<PublicKey>, In
         let partial_sig_contains_pk = inp.partial_sigs.iter().find(|&(&pk, _sig)| {
             // Indirect way to check the equivalence of pubkey-hashes.
             // Create a pubkey hash and check if they are the same.
-            let addr = tapyrus::Address::p2wpkh(&pk, tapyrus::Network::tapyrus)
+            let addr = tapyrus::Address::p2wpkh(&pk, tapyrus::Network::Prod)
                 .expect("Address corresponding to valid pubkey");
             *script_pubkey == addr.script_pubkey()
         });
@@ -242,7 +242,7 @@ fn get_descriptor(psbt: &Psbt, index: usize) -> Result<Descriptor<PublicKey>, In
                 } else if redeem_script.is_p2wpkh() {
                     // 6. `ShWpkh` case
                     let partial_sig_contains_pk = inp.partial_sigs.iter().find(|&(&pk, _sig)| {
-                        let addr = tapyrus::Address::p2wpkh(&pk, tapyrus::Network::tapyrus)
+                        let addr = tapyrus::Address::p2wpkh(&pk, tapyrus::Network::Prod)
                             .expect("Address corresponding to valid pubkey");
                         *redeem_script == addr.script_pubkey()
                     });
