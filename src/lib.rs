@@ -97,6 +97,7 @@ compile_error!(
 compile_error!("at least one of the `std` or `no-std` features must be enabled");
 
 pub use bitcoin;
+pub use tapyrus;
 
 #[cfg(not(feature = "std"))]
 #[macro_use]

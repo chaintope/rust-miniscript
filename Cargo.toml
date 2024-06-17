@@ -12,18 +12,19 @@ edition = "2018"
 
 [features]
 default = ["std"]
-std = ["bitcoin/std", "bitcoin/secp-recovery", "bech32/std"]
-no-std = ["bitcoin/no-std", "bech32/alloc"]
+std = ["bitcoin/std", "bitcoin/secp-recovery", "tapyrus/std", "tapyrus/secp-recovery", "bech32/std"]
+no-std = ["bitcoin/no-std", "tapyrus/no-std", "bech32/alloc"]
 compiler = []
 trace = []
 
-serde = ["actual-serde", "bitcoin/serde"]
-rand = ["bitcoin/rand"]
-base64 = ["bitcoin/base64"]
+serde = ["actual-serde", "bitcoin/serde", "tapyrus/serde"]
+rand = ["bitcoin/rand", "tapyrus/rand"]
+base64 = ["bitcoin/base64", "tapyrus/base64"]
 
 [dependencies]
 bech32 = { version = "0.10.0-beta", default-features = false }
 bitcoin = { version = "0.31.0", default-features = false }
+tapyrus = { git = "https://github.com/chaintope/rust-tapyrus", branch = "update_on_bitcoin_0.31.x", default-features = false, subdirectory = "tapyrus" }
 internals = { package = "bitcoin-internals", version = "0.2.0", default_features = false }
 
 # Do NOT use this as a feature! Use the `serde` feature instead.
@@ -32,6 +33,7 @@ actual-serde = { package = "serde", version = "1.0.103", optional = true }
 [dev-dependencies]
 serde_test = "1.0.147"
 bitcoin = { version = "0.31.0", features = ["base64"] }
+tapyrus = { git = "https://github.com/chaintope/rust-tapyrus", branch = "update_on_bitcoin_0.31.x", features = ["base64"], subdirectory = "tapyrus" }
 secp256k1 = {version = "0.28.0", features = ["rand-std"]}
 
 [[example]]
