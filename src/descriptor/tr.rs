@@ -3,11 +3,11 @@
 use core::str::FromStr;
 use core::{cmp, fmt, hash};
 
-use bitcoin::taproot::{
+use tapyrus::taproot::{
     LeafVersion, TaprootBuilder, TaprootSpendInfo, TAPROOT_CONTROL_BASE_SIZE,
     TAPROOT_CONTROL_MAX_NODE_COUNT, TAPROOT_CONTROL_NODE_SIZE,
 };
-use bitcoin::{opcodes, secp256k1, Address, Network, ScriptBuf};
+use tapyrus::{opcodes, secp256k1, Address, Network, ScriptBuf};
 use sync::Arc;
 
 use super::checksum::{self, verify_checksum};
@@ -349,7 +349,7 @@ impl<Pk: MiniscriptKey + ToPublicKey> Tr<Pk> {
     /// Obtains the corresponding script pubkey for this descriptor.
     pub fn script_pubkey(&self) -> ScriptBuf {
         let output_key = self.spend_info().output_key();
-        let builder = bitcoin::blockdata::script::Builder::new();
+        let builder = tapyrus::blockdata::script::Builder::new();
         builder
             .push_opcode(opcodes::all::OP_PUSHNUM_1)
             .push_slice(output_key.serialize())

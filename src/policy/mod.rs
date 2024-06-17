@@ -2,9 +2,9 @@
 
 //!  Script Policies
 //!
-//! Tools for representing Bitcoin scriptpubkeys as abstract spending policies.
+//! Tools for representing tapyrus scriptpubkeys as abstract spending policies.
 //! These may be compiled to Miniscript, which contains extra information to
-//! describe the exact representation as Bitcoin script.
+//! describe the exact representation as tapyrus script.
 //!
 //! The format represents EC public keys abstractly to allow wallets to replace
 //! these with BIP32 paths, pay-to-contract instructions, etc.
@@ -90,7 +90,7 @@ impl<Pk: MiniscriptKey, Ctx: ScriptContext> Miniscript<Pk, Ctx> {
     /// policy for human readable or machine analysis. However, naively lifting
     /// miniscripts can result in incorrect interpretations that don't
     /// correspond to the underlying semantics when we try to spend them on
-    /// bitcoin network. This can occur if the miniscript contains:
+    /// tapyrus network. This can occur if the miniscript contains:
     /// 1. A combination of timelocks
     /// 2. A spend that exceeds resource limits
     pub fn lift_check(&self) -> Result<(), LiftError> {
@@ -222,7 +222,7 @@ impl<Pk: MiniscriptKey> Liftable<Pk> for Arc<Concrete<Pk>> {
 mod tests {
     use core::str::FromStr;
 
-    use bitcoin::Sequence;
+    use tapyrus::Sequence;
     #[cfg(feature = "compiler")]
     use sync::Arc;
 
@@ -331,16 +331,16 @@ mod tests {
 
     #[test]
     fn lift_andor() {
-        let key_a: bitcoin::PublicKey =
+        let key_a: tapyrus::PublicKey =
             "02d7924d4f7d43ea965a465ae3095ff41131e5946f3c85f79e44adbcf8e27e080e"
                 .parse()
                 .unwrap();
-        let key_b: bitcoin::PublicKey =
+        let key_b: tapyrus::PublicKey =
             "03b506a1dbe57b4bf48c95e0c7d417b87dd3b4349d290d2e7e9ba72c912652d80a"
                 .parse()
                 .unwrap();
 
-        let ms_str: Miniscript<bitcoin::PublicKey, Segwitv0> =
+        let ms_str: Miniscript<tapyrus::PublicKey, Segwitv0> =
             format!("andor(multi(1,{}),older(42),c:pk_k({}))", key_a.inner, key_b.inner)
                 .parse()
                 .unwrap();

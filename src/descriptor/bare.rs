@@ -9,8 +9,8 @@
 
 use core::fmt;
 
-use bitcoin::script::{self, PushBytes};
-use bitcoin::{Address, Network, ScriptBuf};
+use tapyrus::script::{self, PushBytes};
+use tapyrus::{Address, Network, ScriptBuf};
 
 use super::checksum::verify_checksum;
 use crate::descriptor::{write_descriptor, DefiniteDescriptorKey};

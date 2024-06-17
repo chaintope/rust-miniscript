@@ -4,14 +4,14 @@
 //!
 //! Datatype describing a Miniscript "script fragment", which are the
 //! building blocks of all Miniscripts. Each fragment has a unique
-//! encoding in Bitcoin script, as well as a datatype. Full details
+//! encoding in tapyrus script, as well as a datatype. Full details
 //! are given on the Miniscript website.
 
 use core::fmt;
 use core::str::FromStr;
 
-use bitcoin::hashes::{hash160, Hash};
-use bitcoin::{absolute, opcodes, script, Sequence};
+use tapyrus::hashes::{hash160, Hash};
+use tapyrus::{absolute, opcodes, script, Sequence};
 use sync::Arc;
 
 use crate::miniscript::context::SigType;
@@ -447,7 +447,7 @@ impl<Pk: MiniscriptKey, Ctx: ScriptContext> PushAstElem<Pk, Ctx> for script::Bui
 }
 
 impl<Pk: MiniscriptKey, Ctx: ScriptContext> Terminal<Pk, Ctx> {
-    /// Encode the element as a fragment of Bitcoin Script. The inverse
+    /// Encode the element as a fragment of tapyrus Script. The inverse
     /// function, from Script to an AST element, is implemented in the
     /// `parse` module.
     pub fn encode(&self, mut builder: script::Builder) -> script::Builder

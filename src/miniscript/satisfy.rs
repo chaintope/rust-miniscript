@@ -8,10 +8,10 @@
 
 use core::{cmp, fmt, i64, mem};
 
-use bitcoin::hashes::hash160;
-use bitcoin::key::XOnlyPublicKey;
-use bitcoin::taproot::{ControlBlock, LeafVersion, TapLeafHash, TapNodeHash};
-use bitcoin::{absolute, ScriptBuf, Sequence};
+use tapyrus::hashes::hash160;
+use tapyrus::key::XOnlyPublicKey;
+use tapyrus::taproot::{ControlBlock, LeafVersion, TapLeafHash, TapNodeHash};
+use tapyrus::{absolute, ScriptBuf, Sequence};
 use sync::Arc;
 
 use super::context::SigType;
@@ -28,31 +28,31 @@ pub type Preimage32 = [u8; 32];
 /// have data for.
 pub trait Satisfier<Pk: MiniscriptKey + ToPublicKey> {
     /// Given a public key, look up an ECDSA signature with that key
-    fn lookup_ecdsa_sig(&self, _: &Pk) -> Option<bitcoin::ecdsa::Signature> { None }
+    fn lookup_ecdsa_sig(&self, _: &Pk) -> Option<tapyrus::ecdsa::Signature> { None }
 
     /// Lookup the tap key spend sig
-    fn lookup_tap_key_spend_sig(&self) -> Option<bitcoin::taproot::Signature> { None }
+    fn lookup_tap_key_spend_sig(&self) -> Option<tapyrus::taproot::Signature> { None }
 
     /// Given a public key and a associated leaf hash, look up an schnorr signature with that key
     fn lookup_tap_leaf_script_sig(
         &self,
         _: &Pk,
         _: &TapLeafHash,
-    ) -> Option<bitcoin::taproot::Signature> {
+    ) -> Option<tapyrus::taproot::Signature> {
         None
     }
 
     /// Obtain a reference to the control block for a ver and script
     fn lookup_tap_control_block_map(
         &self,
-    ) -> Option<&BTreeMap<ControlBlock, (bitcoin::ScriptBuf, LeafVersion)>> {
+    ) -> Option<&BTreeMap<ControlBlock, (tapyrus::ScriptBuf, LeafVersion)>> {
         None
     }
 
-    /// Given a raw `Pkh`, lookup corresponding [`bitcoin::PublicKey`]
-    fn lookup_raw_pkh_pk(&self, _: &hash160::Hash) -> Option<bitcoin::PublicKey> { None }
+    /// Given a raw `Pkh`, lookup corresponding [`tapyrus::PublicKey`]
+    fn lookup_raw_pkh_pk(&self, _: &hash160::Hash) -> Option<tapyrus::PublicKey> { None }
 
-    /// Given a raw `Pkh`, lookup corresponding [`bitcoin::secp256k1::XOnlyPublicKey`]
+    /// Given a raw `Pkh`, lookup corresponding [`tapyrus::secp256k1::XOnlyPublicKey`]
     fn lookup_raw_pkh_x_only_pk(&self, _: &hash160::Hash) -> Option<XOnlyPublicKey> { None }
 
     /// Given a keyhash, look up the EC signature and the associated key
@@ -62,7 +62,7 @@ pub trait Satisfier<Pk: MiniscriptKey + ToPublicKey> {
     fn lookup_raw_pkh_ecdsa_sig(
         &self,
         _: &hash160::Hash,
-    ) -> Option<(bitcoin::PublicKey, bitcoin::ecdsa::Signature)> {
+    ) -> Option<(tapyrus::PublicKey, tapyrus::ecdsa::Signature)> {
         None
     }
 
@@ -73,7 +73,7 @@ pub trait Satisfier<Pk: MiniscriptKey + ToPublicKey> {
     fn lookup_raw_pkh_tap_leaf_script_sig(
         &self,
         _: &(hash160::Hash, TapLeafHash),
-    ) -> Option<(XOnlyPublicKey, bitcoin::taproot::Signature)> {
+    ) -> Option<(XOnlyPublicKey, tapyrus::taproot::Signature)> {
         None
     }
 
@@ -147,9 +147,9 @@ macro_rules! impl_satisfier_for_map_key_to_ecdsa_sig {
     ($(#[$($attr:meta)*])* impl Satisfier<Pk> for $map:ident<$key:ty, $val:ty>) => {
         $(#[$($attr)*])*
         impl<Pk: MiniscriptKey + ToPublicKey> Satisfier<Pk>
-            for $map<Pk, bitcoin::ecdsa::Signature>
+            for $map<Pk, tapyrus::ecdsa::Signature>
         {
-            fn lookup_ecdsa_sig(&self, key: &Pk) -> Option<bitcoin::ecdsa::Signature> {
+            fn lookup_ecdsa_sig(&self, key: &Pk) -> Option<tapyrus::ecdsa::Signature> {
                 self.get(key).copied()
             }
         }
@@ -157,25 +157,25 @@ macro_rules! impl_satisfier_for_map_key_to_ecdsa_sig {
 }
 
 impl_satisfier_for_map_key_to_ecdsa_sig! {
-    impl Satisfier<Pk> for BTreeMap<Pk, bitcoin::ecdsa::Signature>
+    impl Satisfier<Pk> for BTreeMap<Pk, tapyrus::ecdsa::Signature>
 }
 
 impl_satisfier_for_map_key_to_ecdsa_sig! {
     #[cfg(feature = "std")]
-    impl Satisfier<Pk> for HashMap<Pk, bitcoin::ecdsa::Signature>
+    impl Satisfier<Pk> for HashMap<Pk, tapyrus::ecdsa::Signature>
 }
 
 macro_rules! impl_satisfier_for_map_key_hash_to_taproot_sig {
     ($(#[$($attr:meta)*])* impl Satisfier<Pk> for $map:ident<$key:ty, $val:ty>) => {
         $(#[$($attr)*])*
         impl<Pk: MiniscriptKey + ToPublicKey> Satisfier<Pk>
-            for $map<(Pk, TapLeafHash), bitcoin::taproot::Signature>
+            for $map<(Pk, TapLeafHash), tapyrus::taproot::Signature>
         {
             fn lookup_tap_leaf_script_sig(
                 &self,
                 key: &Pk,
                 h: &TapLeafHash,
-            ) -> Option<bitcoin::taproot::Signature> {
+            ) -> Option<tapyrus::taproot::Signature> {
                 // Unfortunately, there is no way to get a &(a, b) from &a and &b without allocating
                 // If we change the signature the of lookup_tap_leaf_script_sig to accept a tuple. We would
                 // face the same problem while satisfying PkK.
@@ -187,34 +187,34 @@ macro_rules! impl_satisfier_for_map_key_hash_to_taproot_sig {
 }
 
 impl_satisfier_for_map_key_hash_to_taproot_sig! {
-    impl Satisfier<Pk> for BTreeMap<(Pk, TapLeafHash), bitcoin::taproot::Signature>
+    impl Satisfier<Pk> for BTreeMap<(Pk, TapLeafHash), tapyrus::taproot::Signature>
 }
 
 impl_satisfier_for_map_key_hash_to_taproot_sig! {
     #[cfg(feature = "std")]
-    impl Satisfier<Pk> for HashMap<(Pk, TapLeafHash), bitcoin::taproot::Signature>
+    impl Satisfier<Pk> for HashMap<(Pk, TapLeafHash), tapyrus::taproot::Signature>
 }
 
 macro_rules! impl_satisfier_for_map_hash_to_key_ecdsa_sig {
     ($(#[$($attr:meta)*])* impl Satisfier<Pk> for $map:ident<$key:ty, $val:ty>) => {
         $(#[$($attr)*])*
         impl<Pk: MiniscriptKey + ToPublicKey> Satisfier<Pk>
-            for $map<hash160::Hash, (Pk, bitcoin::ecdsa::Signature)>
+            for $map<hash160::Hash, (Pk, tapyrus::ecdsa::Signature)>
         where
             Pk: MiniscriptKey + ToPublicKey,
         {
-            fn lookup_ecdsa_sig(&self, key: &Pk) -> Option<bitcoin::ecdsa::Signature> {
+            fn lookup_ecdsa_sig(&self, key: &Pk) -> Option<tapyrus::ecdsa::Signature> {
                 self.get(&key.to_pubkeyhash(SigType::Ecdsa)).map(|x| x.1)
             }
 
-            fn lookup_raw_pkh_pk(&self, pk_hash: &hash160::Hash) -> Option<bitcoin::PublicKey> {
+            fn lookup_raw_pkh_pk(&self, pk_hash: &hash160::Hash) -> Option<tapyrus::PublicKey> {
                 self.get(pk_hash).map(|x| x.0.to_public_key())
             }
 
             fn lookup_raw_pkh_ecdsa_sig(
                 &self,
                 pk_hash: &hash160::Hash,
-            ) -> Option<(bitcoin::PublicKey, bitcoin::ecdsa::Signature)> {
+            ) -> Option<(tapyrus::PublicKey, tapyrus::ecdsa::Signature)> {
                 self.get(pk_hash)
                     .map(|&(ref pk, sig)| (pk.to_public_key(), sig))
             }
@@ -223,19 +223,19 @@ macro_rules! impl_satisfier_for_map_hash_to_key_ecdsa_sig {
 }
 
 impl_satisfier_for_map_hash_to_key_ecdsa_sig! {
-    impl Satisfier<Pk> for BTreeMap<hash160::Hash, (Pk, bitcoin::ecdsa::Signature)>
+    impl Satisfier<Pk> for BTreeMap<hash160::Hash, (Pk, tapyrus::ecdsa::Signature)>
 }
 
 impl_satisfier_for_map_hash_to_key_ecdsa_sig! {
     #[cfg(feature = "std")]
-    impl Satisfier<Pk> for HashMap<hash160::Hash, (Pk, bitcoin::ecdsa::Signature)>
+    impl Satisfier<Pk> for HashMap<hash160::Hash, (Pk, tapyrus::ecdsa::Signature)>
 }
 
 macro_rules! impl_satisfier_for_map_hash_tapleafhash_to_key_taproot_sig {
     ($(#[$($attr:meta)*])* impl Satisfier<Pk> for $map:ident<$key:ty, $val:ty>) => {
         $(#[$($attr)*])*
         impl<Pk: MiniscriptKey + ToPublicKey> Satisfier<Pk>
-            for $map<(hash160::Hash, TapLeafHash), (Pk, bitcoin::taproot::Signature)>
+            for $map<(hash160::Hash, TapLeafHash), (Pk, tapyrus::taproot::Signature)>
         where
             Pk: MiniscriptKey + ToPublicKey,
         {
@@ -243,7 +243,7 @@ macro_rules! impl_satisfier_for_map_hash_tapleafhash_to_key_taproot_sig {
                 &self,
                 key: &Pk,
                 h: &TapLeafHash,
-            ) -> Option<bitcoin::taproot::Signature> {
+            ) -> Option<tapyrus::taproot::Signature> {
                 self.get(&(key.to_pubkeyhash(SigType::Schnorr), *h))
                     .map(|x| x.1)
             }
@@ -251,7 +251,7 @@ macro_rules! impl_satisfier_for_map_hash_tapleafhash_to_key_taproot_sig {
             fn lookup_raw_pkh_tap_leaf_script_sig(
                 &self,
                 pk_hash: &(hash160::Hash, TapLeafHash),
-            ) -> Option<(XOnlyPublicKey, bitcoin::taproot::Signature)> {
+            ) -> Option<(XOnlyPublicKey, tapyrus::taproot::Signature)> {
                 self.get(pk_hash)
                     .map(|&(ref pk, sig)| (pk.to_x_only_pubkey(), sig))
             }
@@ -260,16 +260,16 @@ macro_rules! impl_satisfier_for_map_hash_tapleafhash_to_key_taproot_sig {
 }
 
 impl_satisfier_for_map_hash_tapleafhash_to_key_taproot_sig! {
-    impl Satisfier<Pk> for BTreeMap<(hash160::Hash, TapLeafHash), (Pk, bitcoin::taproot::Signature)>
+    impl Satisfier<Pk> for BTreeMap<(hash160::Hash, TapLeafHash), (Pk, tapyrus::taproot::Signature)>
 }
 
 impl_satisfier_for_map_hash_tapleafhash_to_key_taproot_sig! {
     #[cfg(feature = "std")]
-    impl Satisfier<Pk> for HashMap<(hash160::Hash, TapLeafHash), (Pk, bitcoin::taproot::Signature)>
+    impl Satisfier<Pk> for HashMap<(hash160::Hash, TapLeafHash), (Pk, tapyrus::taproot::Signature)>
 }
 
 impl<'a, Pk: MiniscriptKey + ToPublicKey, S: Satisfier<Pk>> Satisfier<Pk> for &'a S {
-    fn lookup_ecdsa_sig(&self, p: &Pk) -> Option<bitcoin::ecdsa::Signature> {
+    fn lookup_ecdsa_sig(&self, p: &Pk) -> Option<tapyrus::ecdsa::Signature> {
         (**self).lookup_ecdsa_sig(p)
     }
 
@@ -277,11 +277,11 @@ impl<'a, Pk: MiniscriptKey + ToPublicKey, S: Satisfier<Pk>> Satisfier<Pk> for &'
         &self,
         p: &Pk,
         h: &TapLeafHash,
-    ) -> Option<bitcoin::taproot::Signature> {
+    ) -> Option<tapyrus::taproot::Signature> {
         (**self).lookup_tap_leaf_script_sig(p, h)
     }
 
-    fn lookup_raw_pkh_pk(&self, pkh: &hash160::Hash) -> Option<bitcoin::PublicKey> {
+    fn lookup_raw_pkh_pk(&self, pkh: &hash160::Hash) -> Option<tapyrus::PublicKey> {
         (**self).lookup_raw_pkh_pk(pkh)
     }
 
@@ -292,24 +292,24 @@ impl<'a, Pk: MiniscriptKey + ToPublicKey, S: Satisfier<Pk>> Satisfier<Pk> for &'
     fn lookup_raw_pkh_ecdsa_sig(
         &self,
         pkh: &hash160::Hash,
-    ) -> Option<(bitcoin::PublicKey, bitcoin::ecdsa::Signature)> {
+    ) -> Option<(tapyrus::PublicKey, tapyrus::ecdsa::Signature)> {
         (**self).lookup_raw_pkh_ecdsa_sig(pkh)
     }
 
-    fn lookup_tap_key_spend_sig(&self) -> Option<bitcoin::taproot::Signature> {
+    fn lookup_tap_key_spend_sig(&self) -> Option<tapyrus::taproot::Signature> {
         (**self).lookup_tap_key_spend_sig()
     }
 
     fn lookup_raw_pkh_tap_leaf_script_sig(
         &self,
         pkh: &(hash160::Hash, TapLeafHash),
-    ) -> Option<(XOnlyPublicKey, bitcoin::taproot::Signature)> {
+    ) -> Option<(XOnlyPublicKey, tapyrus::taproot::Signature)> {
         (**self).lookup_raw_pkh_tap_leaf_script_sig(pkh)
     }
 
     fn lookup_tap_control_block_map(
         &self,
-    ) -> Option<&BTreeMap<ControlBlock, (bitcoin::ScriptBuf, LeafVersion)>> {
+    ) -> Option<&BTreeMap<ControlBlock, (tapyrus::ScriptBuf, LeafVersion)>> {
         (**self).lookup_tap_control_block_map()
     }
 
@@ -329,7 +329,7 @@ impl<'a, Pk: MiniscriptKey + ToPublicKey, S: Satisfier<Pk>> Satisfier<Pk> for &'
 }
 
 impl<'a, Pk: MiniscriptKey + ToPublicKey, S: Satisfier<Pk>> Satisfier<Pk> for &'a mut S {
-    fn lookup_ecdsa_sig(&self, p: &Pk) -> Option<bitcoin::ecdsa::Signature> {
+    fn lookup_ecdsa_sig(&self, p: &Pk) -> Option<tapyrus::ecdsa::Signature> {
         (**self).lookup_ecdsa_sig(p)
     }
 
@@ -337,15 +337,15 @@ impl<'a, Pk: MiniscriptKey + ToPublicKey, S: Satisfier<Pk>> Satisfier<Pk> for &'
         &self,
         p: &Pk,
         h: &TapLeafHash,
-    ) -> Option<bitcoin::taproot::Signature> {
+    ) -> Option<tapyrus::taproot::Signature> {
         (**self).lookup_tap_leaf_script_sig(p, h)
     }
 
-    fn lookup_tap_key_spend_sig(&self) -> Option<bitcoin::taproot::Signature> {
+    fn lookup_tap_key_spend_sig(&self) -> Option<tapyrus::taproot::Signature> {
         (**self).lookup_tap_key_spend_sig()
     }
 
-    fn lookup_raw_pkh_pk(&self, pkh: &hash160::Hash) -> Option<bitcoin::PublicKey> {
+    fn lookup_raw_pkh_pk(&self, pkh: &hash160::Hash) -> Option<tapyrus::PublicKey> {
         (**self).lookup_raw_pkh_pk(pkh)
     }
 
@@ -356,20 +356,20 @@ impl<'a, Pk: MiniscriptKey + ToPublicKey, S: Satisfier<Pk>> Satisfier<Pk> for &'
     fn lookup_raw_pkh_ecdsa_sig(
         &self,
         pkh: &hash160::Hash,
-    ) -> Option<(bitcoin::PublicKey, bitcoin::ecdsa::Signature)> {
+    ) -> Option<(tapyrus::PublicKey, tapyrus::ecdsa::Signature)> {
         (**self).lookup_raw_pkh_ecdsa_sig(pkh)
     }
 
     fn lookup_raw_pkh_tap_leaf_script_sig(
         &self,
         pkh: &(hash160::Hash, TapLeafHash),
-    ) -> Option<(XOnlyPublicKey, bitcoin::taproot::Signature)> {
+    ) -> Option<(XOnlyPublicKey, tapyrus::taproot::Signature)> {
         (**self).lookup_raw_pkh_tap_leaf_script_sig(pkh)
     }
 
     fn lookup_tap_control_block_map(
         &self,
-    ) -> Option<&BTreeMap<ControlBlock, (bitcoin::ScriptBuf, LeafVersion)>> {
+    ) -> Option<&BTreeMap<ControlBlock, (tapyrus::ScriptBuf, LeafVersion)>> {
         (**self).lookup_tap_control_block_map()
     }
 
@@ -396,7 +396,7 @@ macro_rules! impl_tuple_satisfier {
             Pk: MiniscriptKey + ToPublicKey,
             $($ty: Satisfier< Pk>,)*
         {
-            fn lookup_ecdsa_sig(&self, key: &Pk) -> Option<bitcoin::ecdsa::Signature> {
+            fn lookup_ecdsa_sig(&self, key: &Pk) -> Option<tapyrus::ecdsa::Signature> {
                 let &($(ref $ty,)*) = self;
                 $(
                     if let Some(result) = $ty.lookup_ecdsa_sig(key) {
@@ -406,7 +406,7 @@ macro_rules! impl_tuple_satisfier {
                 None
             }
 
-            fn lookup_tap_key_spend_sig(&self) -> Option<bitcoin::taproot::Signature> {
+            fn lookup_tap_key_spend_sig(&self) -> Option<tapyrus::taproot::Signature> {
                 let &($(ref $ty,)*) = self;
                 $(
                     if let Some(result) = $ty.lookup_tap_key_spend_sig() {
@@ -416,7 +416,7 @@ macro_rules! impl_tuple_satisfier {
                 None
             }
 
-            fn lookup_tap_leaf_script_sig(&self, key: &Pk, h: &TapLeafHash) -> Option<bitcoin::taproot::Signature> {
+            fn lookup_tap_leaf_script_sig(&self, key: &Pk, h: &TapLeafHash) -> Option<tapyrus::taproot::Signature> {
                 let &($(ref $ty,)*) = self;
                 $(
                     if let Some(result) = $ty.lookup_tap_leaf_script_sig(key, h) {
@@ -429,7 +429,7 @@ macro_rules! impl_tuple_satisfier {
             fn lookup_raw_pkh_ecdsa_sig(
                 &self,
                 key_hash: &hash160::Hash,
-            ) -> Option<(bitcoin::PublicKey, bitcoin::ecdsa::Signature)> {
+            ) -> Option<(tapyrus::PublicKey, tapyrus::ecdsa::Signature)> {
                 let &($(ref $ty,)*) = self;
                 $(
                     if let Some(result) = $ty.lookup_raw_pkh_ecdsa_sig(key_hash) {
@@ -442,7 +442,7 @@ macro_rules! impl_tuple_satisfier {
             fn lookup_raw_pkh_tap_leaf_script_sig(
                 &self,
                 key_hash: &(hash160::Hash, TapLeafHash),
-            ) -> Option<(XOnlyPublicKey, bitcoin::taproot::Signature)> {
+            ) -> Option<(XOnlyPublicKey, tapyrus::taproot::Signature)> {
                 let &($(ref $ty,)*) = self;
                 $(
                     if let Some(result) = $ty.lookup_raw_pkh_tap_leaf_script_sig(key_hash) {
@@ -455,7 +455,7 @@ macro_rules! impl_tuple_satisfier {
             fn lookup_raw_pkh_pk(
                 &self,
                 key_hash: &hash160::Hash,
-            ) -> Option<bitcoin::PublicKey> {
+            ) -> Option<tapyrus::PublicKey> {
                 let &($(ref $ty,)*) = self;
                 $(
                     if let Some(result) = $ty.lookup_raw_pkh_pk(key_hash) {
@@ -479,7 +479,7 @@ macro_rules! impl_tuple_satisfier {
 
             fn lookup_tap_control_block_map(
                 &self,
-            ) -> Option<&BTreeMap<ControlBlock, (bitcoin::ScriptBuf, LeafVersion)>> {
+            ) -> Option<&BTreeMap<ControlBlock, (tapyrus::ScriptBuf, LeafVersion)>> {
                 let &($(ref $ty,)*) = self;
                 $(
                     if let Some(result) = $ty.lookup_tap_control_block_map() {
@@ -642,7 +642,7 @@ impl<Pk: MiniscriptKey> fmt::Display for Placeholder<Pk> {
             TapControlBlock(control_block) => write!(
                 f,
                 "TapControlBlock(control_block: {})",
-                bitcoin::consensus::encode::serialize_hex(&control_block.serialize())
+                tapyrus::consensus::encode::serialize_hex(&control_block.serialize())
             ),
         }
     }

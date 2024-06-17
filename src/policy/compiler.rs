@@ -1151,8 +1151,8 @@ where
 mod tests {
     use core::str::FromStr;
 
-    use bitcoin::blockdata::{opcodes, script};
-    use bitcoin::{self, hashes, secp256k1, Sequence};
+    use tapyrus::blockdata::{opcodes, script};
+    use tapyrus::{self, hashes, secp256k1, Sequence};
 
     use super::*;
     use crate::miniscript::{Legacy, Segwitv0, Tap};
@@ -1160,11 +1160,11 @@ mod tests {
     use crate::{script_num_size, ToPublicKey};
 
     type SPolicy = Concrete<String>;
-    type BPolicy = Concrete<bitcoin::PublicKey>;
+    type BPolicy = Concrete<tapyrus::PublicKey>;
     type TapAstElemExt = policy::compiler::AstElemExt<String, Tap>;
-    type SegwitMiniScript = Miniscript<bitcoin::PublicKey, Segwitv0>;
+    type SegwitMiniScript = Miniscript<tapyrus::PublicKey, Segwitv0>;
 
-    fn pubkeys_and_a_sig(n: usize) -> (Vec<bitcoin::PublicKey>, secp256k1::ecdsa::Signature) {
+    fn pubkeys_and_a_sig(n: usize) -> (Vec<tapyrus::PublicKey>, secp256k1::ecdsa::Signature) {
         let mut ret = Vec::with_capacity(n);
         let secp = secp256k1::Secp256k1::new();
         let mut sk = [0; 32];
@@ -1173,7 +1173,7 @@ mod tests {
             sk[1] = (i >> 8) as u8;
             sk[2] = (i >> 16) as u8;
 
-            let pk = bitcoin::PublicKey {
+            let pk = tapyrus::PublicKey {
                 inner: secp256k1::PublicKey::from_secret_key(
                     &secp,
                     &secp256k1::SecretKey::from_slice(&sk[..]).expect("sk"),
@@ -1320,7 +1320,7 @@ mod tests {
 
         let ms: SegwitMiniScript = policy.compile().unwrap();
 
-        let ms_comp_res: Miniscript<bitcoin::PublicKey, Segwitv0> = ms_str!(
+        let ms_comp_res: Miniscript<tapyrus::PublicKey, Segwitv0> = ms_str!(
             "or_d(multi(3,{},{},{},{},{}),\
              and_v(v:thresh(2,c:pk_h({}),\
              ac:pk_h({}),ac:pk_h({})),older(10000)))",
@@ -1349,22 +1349,22 @@ mod tests {
         assert_eq!(abs.n_keys(), 5);
         assert_eq!(abs.minimum_n_keys(), Some(3));
 
-        let bitcoinsig =
-            bitcoin::ecdsa::Signature { sig, hash_ty: bitcoin::sighash::EcdsaSighashType::All };
-        let sigvec = bitcoinsig.to_vec();
+        let tapyrussig =
+            tapyrus::ecdsa::Signature { sig, hash_ty: tapyrus::sighash::EcdsaSighashType::All };
+        let sigvec = tapyrussig.to_vec();
 
-        let no_sat = BTreeMap::<bitcoin::PublicKey, bitcoin::ecdsa::Signature>::new();
-        let mut left_sat = BTreeMap::<bitcoin::PublicKey, bitcoin::ecdsa::Signature>::new();
+        let no_sat = BTreeMap::<tapyrus::PublicKey, tapyrus::ecdsa::Signature>::new();
+        let mut left_sat = BTreeMap::<tapyrus::PublicKey, tapyrus::ecdsa::Signature>::new();
         let mut right_sat = BTreeMap::<
             hashes::hash160::Hash,
-            (bitcoin::PublicKey, bitcoin::ecdsa::Signature),
+            (tapyrus::PublicKey, tapyrus::ecdsa::Signature),
         >::new();
 
         for i in 0..5 {
-            left_sat.insert(keys[i], bitcoinsig);
+            left_sat.insert(keys[i], tapyrussig);
         }
         for i in 5..8 {
-            right_sat.insert(keys[i].to_pubkeyhash(SigType::Ecdsa), (keys[i], bitcoinsig));
+            right_sat.insert(keys[i].to_pubkeyhash(SigType::Ecdsa), (keys[i], tapyrussig));
         }
 
         assert!(ms.satisfy(no_sat).is_err());
@@ -1426,7 +1426,7 @@ mod tests {
         // and to a ms thresh otherwise.
         // k = 1 (or 2) does not compile, see https://github.com/rust-bitcoin/rust-miniscript/issues/114
         for k in &[10, 15, 21] {
-            let pubkeys: Vec<Arc<Concrete<bitcoin::PublicKey>>> = keys
+            let pubkeys: Vec<Arc<Concrete<tapyrus::PublicKey>>> = keys
                 .iter()
                 .map(|pubkey| Arc::new(Concrete::Key(*pubkey)))
                 .collect();
@@ -1456,11 +1456,11 @@ mod tests {
         // or(thresh(52, [pubkey; 52]), thresh(52, [pubkey; 52])) results in a 3642-bytes long
         // witness script with only 54 stack elements
         let (keys, _) = pubkeys_and_a_sig(104);
-        let keys_a: Vec<Arc<Concrete<bitcoin::PublicKey>>> = keys[..keys.len() / 2]
+        let keys_a: Vec<Arc<Concrete<tapyrus::PublicKey>>> = keys[..keys.len() / 2]
             .iter()
             .map(|pubkey| Arc::new(Concrete::Key(*pubkey)))
             .collect();
-        let keys_b: Vec<Arc<Concrete<bitcoin::PublicKey>>> = keys[keys.len() / 2..]
+        let keys_b: Vec<Arc<Concrete<tapyrus::PublicKey>>> = keys[keys.len() / 2..]
             .iter()
             .map(|pubkey| Arc::new(Concrete::Key(*pubkey)))
             .collect();
@@ -1480,7 +1480,7 @@ mod tests {
 
         // Hit the maximum witness stack elements limit
         let (keys, _) = pubkeys_and_a_sig(100);
-        let keys: Vec<Arc<Concrete<bitcoin::PublicKey>>> = keys
+        let keys: Vec<Arc<Concrete<tapyrus::PublicKey>>> = keys
             .iter()
             .map(|pubkey| Arc::new(Concrete::Key(*pubkey)))
             .collect();
@@ -1501,7 +1501,7 @@ mod tests {
     fn shared_limits() {
         // Test the maximum number of OPs with a 67-of-68 multisig
         let (keys, _) = pubkeys_and_a_sig(68);
-        let keys: Vec<Arc<Concrete<bitcoin::PublicKey>>> = keys
+        let keys: Vec<Arc<Concrete<tapyrus::PublicKey>>> = keys
             .iter()
             .map(|pubkey| Arc::new(Concrete::Key(*pubkey)))
             .collect();
@@ -1516,7 +1516,7 @@ mod tests {
         );
         // For legacy too..
         let (keys, _) = pubkeys_and_a_sig(68);
-        let keys: Vec<Arc<Concrete<bitcoin::PublicKey>>> = keys
+        let keys: Vec<Arc<Concrete<tapyrus::PublicKey>>> = keys
             .iter()
             .map(|pubkey| Arc::new(Concrete::Key(*pubkey)))
             .collect();

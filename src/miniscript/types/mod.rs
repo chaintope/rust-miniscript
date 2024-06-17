@@ -12,7 +12,7 @@ use core::fmt;
 #[cfg(feature = "std")]
 use std::error;
 
-use bitcoin::{absolute, Sequence};
+use tapyrus::{absolute, Sequence};
 
 pub use self::correctness::{Base, Correctness, Input};
 pub use self::extra_props::ExtData;

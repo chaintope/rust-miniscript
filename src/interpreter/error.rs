@@ -5,8 +5,8 @@ use core::fmt;
 #[cfg(feature = "std")]
 use std::error;
 
-use bitcoin::hashes::hash160;
-use bitcoin::{secp256k1, taproot};
+use tapyrus::hashes::hash160;
+use tapyrus::{secp256k1, taproot};
 use internals::hex::display::DisplayHex;
 
 use super::BitcoinKey;
@@ -31,7 +31,7 @@ pub enum Error {
     /// General Interpreter error.
     CouldNotEvaluate,
     /// ECDSA Signature related error
-    EcdsaSig(bitcoin::ecdsa::Error),
+    EcdsaSig(tapyrus::ecdsa::Error),
     /// We expected a push (including a `OP_1` but no other numeric pushes)
     ExpectedPush,
     /// The preimage to the hash function must be exactly 32 bytes.
@@ -49,9 +49,9 @@ pub enum Error {
     /// Invalid Sighash type
     InvalidSchnorrSighashType(Vec<u8>),
     /// ecdsa Signature failed to verify
-    InvalidEcdsaSignature(bitcoin::PublicKey),
+    InvalidEcdsaSignature(tapyrus::PublicKey),
     /// Signature failed to verify
-    InvalidSchnorrSignature(bitcoin::key::XOnlyPublicKey),
+    InvalidSchnorrSignature(tapyrus::key::XOnlyPublicKey),
     /// Last byte of this signature isn't a standard sighash type
     NonStandardSighash(Vec<u8>),
     /// Miniscript error
@@ -71,7 +71,7 @@ pub enum Error {
     /// Any input witness apart from sat(sig) or nsat(0) leads to
     /// this error. This is network standardness assumption and miniscript only
     /// supports standard scripts
-    // note that BitcoinKey is not exported, create a data structure to convey the same
+    // note that tapyrusKey is not exported, create a data structure to convey the same
     // information in error
     PkEvaluationError(PkEvalErrInner),
     /// The Public Key hash check for the given pubkey. This occurs in `PkH`
@@ -89,9 +89,9 @@ pub enum Error {
     /// Miniscript requires the entire top level script to be satisfied.
     ScriptSatisfactionError,
     /// Schnorr Signature error
-    SchnorrSig(bitcoin::taproot::SigFromSliceError),
+    SchnorrSig(tapyrus::taproot::SigFromSliceError),
     /// Errors in signature hash calculations
-    SighashError(bitcoin::sighash::Error),
+    SighashError(tapyrus::sighash::Error),
     /// Taproot Annex Unsupported
     TapAnnexUnsupported,
     /// An uncompressed public key was encountered in a context where it is
@@ -234,18 +234,18 @@ impl From<secp256k1::Error> for Error {
 }
 
 #[doc(hidden)]
-impl From<bitcoin::sighash::Error> for Error {
-    fn from(e: bitcoin::sighash::Error) -> Error { Error::SighashError(e) }
+impl From<tapyrus::sighash::Error> for Error {
+    fn from(e: tapyrus::sighash::Error) -> Error { Error::SighashError(e) }
 }
 
 #[doc(hidden)]
-impl From<bitcoin::ecdsa::Error> for Error {
-    fn from(e: bitcoin::ecdsa::Error) -> Error { Error::EcdsaSig(e) }
+impl From<tapyrus::ecdsa::Error> for Error {
+    fn from(e: tapyrus::ecdsa::Error) -> Error { Error::EcdsaSig(e) }
 }
 
 #[doc(hidden)]
-impl From<bitcoin::taproot::SigFromSliceError> for Error {
-    fn from(e: bitcoin::taproot::SigFromSliceError) -> Error { Error::SchnorrSig(e) }
+impl From<tapyrus::taproot::SigFromSliceError> for Error {
+    fn from(e: tapyrus::taproot::SigFromSliceError) -> Error { Error::SchnorrSig(e) }
 }
 
 #[doc(hidden)]
@@ -254,13 +254,13 @@ impl From<crate::Error> for Error {
 }
 
 /// A type of representing which keys errored during interpreter checksig evaluation
-// Note that we can't use BitcoinKey because it is not public
+// Note that we can't use tapyrusKey because it is not public
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum PkEvalErrInner {
     /// Full Key
-    FullKey(bitcoin::PublicKey),
+    FullKey(tapyrus::PublicKey),
     /// XOnly Key
-    XOnlyKey(bitcoin::key::XOnlyPublicKey),
+    XOnlyKey(tapyrus::key::XOnlyPublicKey),
 }
 
 impl From<BitcoinKey> for PkEvalErrInner {

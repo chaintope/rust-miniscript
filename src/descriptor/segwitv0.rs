@@ -7,7 +7,7 @@
 
 use core::fmt;
 
-use bitcoin::{Address, Network, ScriptBuf};
+use tapyrus::{Address, Network, ScriptBuf};
 
 use super::checksum::verify_checksum;
 use super::SortedMultiVec;

@@ -10,8 +10,8 @@
 use core::convert::TryFrom;
 use core::fmt;
 
-use bitcoin::script::PushBytes;
-use bitcoin::{script, Address, Network, ScriptBuf};
+use tapyrus::script::PushBytes;
+use tapyrus::{script, Address, Network, ScriptBuf};
 
 use super::checksum::verify_checksum;
 use super::{SortedMultiVec, Wpkh, Wsh};

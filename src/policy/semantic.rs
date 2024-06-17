@@ -8,7 +8,7 @@
 use core::str::FromStr;
 use core::{fmt, str};
 
-use bitcoin::{absolute, Sequence};
+use tapyrus::{absolute, Sequence};
 
 use super::concrete::PolicyError;
 use super::ENTAILMENT_MAX_TERMINALS;
@@ -92,33 +92,33 @@ impl<Pk: MiniscriptKey> Policy<Pk> {
     /// ```
     /// use std::collections::HashMap;
     /// use std::str::FromStr;
-    /// use miniscript::bitcoin::{hashes::hash160, PublicKey};
+    /// use miniscript::tapyrus::{hashes::hash160, PublicKey};
     /// use miniscript::{translate_hash_fail, policy::semantic::Policy, Translator};
     /// let alice_pk = "02c79ef3ede6d14f72a00d0e49b4becfb152197b64c0707425c4f231df29500ee7";
     /// let bob_pk = "03d008a849fbf474bd17e9d2c1a827077a468150e58221582ec3410ab309f5afe4";
     /// let placeholder_policy = Policy::<String>::from_str("and(pk(alice_pk),pk(bob_pk))").unwrap();
     ///
-    /// // Information to translate abstract string type keys to concrete `bitcoin::PublicKey`s.
+    /// // Information to translate abstract string type keys to concrete `tapyrus::PublicKey`s.
     /// // In practice, wallets would map from string key names to BIP32 keys.
     /// struct StrPkTranslator {
-    ///     pk_map: HashMap<String, bitcoin::PublicKey>
+    ///     pk_map: HashMap<String, tapyrus::PublicKey>
     /// }
     ///
     /// // If we also wanted to provide mapping of other associated types (sha256, older etc),
     /// // we would use the general [`Translator`] trait.
-    /// impl Translator<String, bitcoin::PublicKey, ()> for StrPkTranslator {
-    ///     fn pk(&mut self, pk: &String) -> Result<bitcoin::PublicKey, ()> {
+    /// impl Translator<String, tapyrus::PublicKey, ()> for StrPkTranslator {
+    ///     fn pk(&mut self, pk: &String) -> Result<tapyrus::PublicKey, ()> {
     ///         self.pk_map.get(pk).copied().ok_or(()) // Dummy Err
     ///     }
     ///
     ///     // Handy macro for failing if we encounter any other fragment.
     ///     // See also [`translate_hash_clone!`] for cloning instead of failing.
-    ///     translate_hash_fail!(String, bitcoin::PublicKey, ());
+    ///     translate_hash_fail!(String, tapyrus::PublicKey, ());
     /// }
     ///
     /// let mut pk_map = HashMap::new();
-    /// pk_map.insert(String::from("alice_pk"), bitcoin::PublicKey::from_str(alice_pk).unwrap());
-    /// pk_map.insert(String::from("bob_pk"), bitcoin::PublicKey::from_str(bob_pk).unwrap());
+    /// pk_map.insert(String::from("alice_pk"), tapyrus::PublicKey::from_str(alice_pk).unwrap());
+    /// pk_map.insert(String::from("bob_pk"), tapyrus::PublicKey::from_str(bob_pk).unwrap());
     /// let mut t = StrPkTranslator { pk_map };
     ///
     /// let real_policy = placeholder_policy.translate_pk(&mut t).unwrap();
@@ -635,7 +635,7 @@ impl<Pk: MiniscriptKey> Policy<Pk> {
 mod tests {
     use core::str::FromStr;
 
-    use bitcoin::PublicKey;
+    use tapyrus::PublicKey;
 
     use super::*;
 

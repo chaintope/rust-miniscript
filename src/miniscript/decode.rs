@@ -2,7 +2,7 @@
 
 //! Script Decoder
 //!
-//! Functionality to parse a Bitcoin Script into a `Miniscript`
+//! Functionality to parse a tapyrus Script into a `Miniscript`
 //!
 
 use core::fmt;
@@ -10,8 +10,8 @@ use core::marker::PhantomData;
 #[cfg(feature = "std")]
 use std::error;
 
-use bitcoin::hashes::{hash160, ripemd160, sha256, Hash};
-use bitcoin::{Sequence, Weight};
+use tapyrus::hashes::{hash160, ripemd160, sha256, Hash};
+use tapyrus::{Sequence, Weight};
 use sync::Arc;
 
 use crate::miniscript::lex::{Token as Tk, TokenIter};
@@ -30,15 +30,15 @@ pub trait ParseableKey: Sized + ToPublicKey + private::Sealed {
     fn from_slice(sl: &[u8]) -> Result<Self, KeyParseError>;
 }
 
-impl ParseableKey for bitcoin::PublicKey {
+impl ParseableKey for tapyrus::PublicKey {
     fn from_slice(sl: &[u8]) -> Result<Self, KeyParseError> {
-        bitcoin::PublicKey::from_slice(sl).map_err(KeyParseError::FullKeyParseError)
+        tapyrus::PublicKey::from_slice(sl).map_err(KeyParseError::FullKeyParseError)
     }
 }
 
-impl ParseableKey for bitcoin::secp256k1::XOnlyPublicKey {
+impl ParseableKey for tapyrus::secp256k1::XOnlyPublicKey {
     fn from_slice(sl: &[u8]) -> Result<Self, KeyParseError> {
-        bitcoin::secp256k1::XOnlyPublicKey::from_slice(sl)
+        tapyrus::secp256k1::XOnlyPublicKey::from_slice(sl)
             .map_err(KeyParseError::XonlyKeyParseError)
     }
 }
@@ -46,10 +46,10 @@ impl ParseableKey for bitcoin::secp256k1::XOnlyPublicKey {
 /// Decoding error while parsing keys
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum KeyParseError {
-    /// Bitcoin PublicKey parse error
-    FullKeyParseError(bitcoin::key::Error),
+    /// tapyrus PublicKey parse error
+    FullKeyParseError(tapyrus::key::Error),
     /// Xonly key parse Error
-    XonlyKeyParseError(bitcoin::secp256k1::Error),
+    XonlyKeyParseError(tapyrus::secp256k1::Error),
 }
 
 impl fmt::Display for KeyParseError {
@@ -77,8 +77,8 @@ mod private {
     pub trait Sealed {}
 
     // Implement for those same types, but no others.
-    impl Sealed for bitcoin::PublicKey {}
-    impl Sealed for bitcoin::secp256k1::XOnlyPublicKey {}
+    impl Sealed for tapyrus::PublicKey {}
+    impl Sealed for tapyrus::secp256k1::XOnlyPublicKey {}
 }
 
 #[derive(Copy, Clone, Debug)]

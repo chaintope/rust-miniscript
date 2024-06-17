@@ -6,7 +6,7 @@
 use core::cmp;
 use core::iter::once;
 
-use bitcoin::{absolute, Sequence};
+use tapyrus::{absolute, Sequence};
 
 use super::{Error, ErrorKind, Property, ScriptContext};
 use crate::miniscript::context::SigType;

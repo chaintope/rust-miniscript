@@ -5,29 +5,29 @@
 use std::collections::HashMap;
 use std::str::FromStr;
 
-use bitcoin::hashes::{hash160, ripemd160, sha256};
-use bitcoin::key::XOnlyPublicKey;
-use bitcoin::secp256k1;
+use tapyrus::hashes::{hash160, ripemd160, sha256};
+use tapyrus::key::XOnlyPublicKey;
+use tapyrus::secp256k1;
 
 use crate::miniscript::context::SigType;
 use crate::{hash256, ToPublicKey, Translator};
 
-/// Translate from a String MiniscriptKey type to bitcoin::PublicKey
+/// Translate from a String MiniscriptKey type to tapyrus::PublicKey
 /// If the hashmap is populated, this will lookup for keys in HashMap
 /// Otherwise, this will return a translation to a random key
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct StrKeyTranslator {
-    pub pk_map: HashMap<String, bitcoin::PublicKey>,
+    pub pk_map: HashMap<String, tapyrus::PublicKey>,
     pub pkh_map: HashMap<String, hash160::Hash>,
     pub sha256_map: HashMap<String, sha256::Hash>,
     pub ripemd160_map: HashMap<String, ripemd160::Hash>,
     pub hash160_map: HashMap<String, hash160::Hash>,
 }
 
-impl Translator<String, bitcoin::PublicKey, ()> for StrKeyTranslator {
-    fn pk(&mut self, pk: &String) -> Result<bitcoin::PublicKey, ()> {
+impl Translator<String, tapyrus::PublicKey, ()> for StrKeyTranslator {
+    fn pk(&mut self, pk: &String) -> Result<tapyrus::PublicKey, ()> {
         let key = self.pk_map.get(pk).copied().unwrap_or_else(|| {
-            bitcoin::PublicKey::from_str(
+            tapyrus::PublicKey::from_str(
                 "02c2122e30e73f7fe37986e3f81ded00158e94b7ad472369b83bbdd28a9a198a39",
             )
             .unwrap()
@@ -63,7 +63,7 @@ impl Translator<String, bitcoin::PublicKey, ()> for StrKeyTranslator {
     }
 }
 
-/// Same as [`StrKeyTranslator`], but for [`bitcoin::XOnlyPublicKey`]
+/// Same as [`StrKeyTranslator`], but for [`tapyrus::XOnlyPublicKey`]
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct StrXOnlyKeyTranslator {
     pub pk_map: HashMap<String, XOnlyPublicKey>,
@@ -133,7 +133,7 @@ impl StrKeyTranslator {
         let sks = random_sks(26);
         let pks: Vec<_> = sks
             .iter()
-            .map(|sk| bitcoin::PublicKey::new(secp256k1::PublicKey::from_secret_key(&secp, sk)))
+            .map(|sk| tapyrus::PublicKey::new(secp256k1::PublicKey::from_secret_key(&secp, sk)))
             .collect();
         let mut pk_map = HashMap::new();
         let mut pkh_map = HashMap::new();

@@ -17,12 +17,12 @@
 use core::cmp::Ordering;
 use core::iter::FromIterator;
 
-use bitcoin::absolute::LockTime;
-use bitcoin::hashes::{hash160, ripemd160, sha256};
-use bitcoin::key::XOnlyPublicKey;
-use bitcoin::script::PushBytesBuf;
-use bitcoin::taproot::{ControlBlock, LeafVersion, TapLeafHash};
-use bitcoin::{bip32, psbt, ScriptBuf, Sequence, WitnessVersion};
+use tapyrus::absolute::LockTime;
+use tapyrus::hashes::{hash160, ripemd160, sha256};
+use tapyrus::key::XOnlyPublicKey;
+use tapyrus::script::PushBytesBuf;
+use tapyrus::taproot::{ControlBlock, LeafVersion, TapLeafHash};
+use tapyrus::{bip32, psbt, ScriptBuf, Sequence, WitnessVersion};
 
 use crate::descriptor::{self, Descriptor, DescriptorType, KeyMap};
 use crate::miniscript::hash256;
@@ -56,14 +56,14 @@ pub trait AssetProvider<Pk: MiniscriptKey> {
     /// Obtain a reference to the control block for a ver and script
     fn provider_lookup_tap_control_block_map(
         &self,
-    ) -> Option<&BTreeMap<ControlBlock, (bitcoin::ScriptBuf, LeafVersion)>> {
+    ) -> Option<&BTreeMap<ControlBlock, (tapyrus::ScriptBuf, LeafVersion)>> {
         None
     }
 
-    /// Given a raw `Pkh`, lookup corresponding [`bitcoin::PublicKey`]
-    fn provider_lookup_raw_pkh_pk(&self, _: &hash160::Hash) -> Option<bitcoin::PublicKey> { None }
+    /// Given a raw `Pkh`, lookup corresponding [`tapyrus::PublicKey`]
+    fn provider_lookup_raw_pkh_pk(&self, _: &hash160::Hash) -> Option<tapyrus::PublicKey> { None }
 
-    /// Given a raw `Pkh`, lookup corresponding [`bitcoin::secp256k1::XOnlyPublicKey`]
+    /// Given a raw `Pkh`, lookup corresponding [`tapyrus::secp256k1::XOnlyPublicKey`]
     fn provider_lookup_raw_pkh_x_only_pk(&self, _: &hash160::Hash) -> Option<XOnlyPublicKey> {
         None
     }
@@ -73,7 +73,7 @@ pub trait AssetProvider<Pk: MiniscriptKey> {
     /// Even if signatures for public key Hashes are not available, the users
     /// can use this map to provide pkh -> pk mapping which can be useful
     /// for dissatisfying pkh.
-    fn provider_lookup_raw_pkh_ecdsa_sig(&self, _: &hash160::Hash) -> Option<bitcoin::PublicKey> {
+    fn provider_lookup_raw_pkh_ecdsa_sig(&self, _: &hash160::Hash) -> Option<tapyrus::PublicKey> {
         None
     }
 
@@ -129,10 +129,10 @@ impl AssetProvider<DefiniteDescriptorKey> for LoggerAssetProvider {
     impl_log_method!(provider_lookup_ecdsa_sig, pk: &DefiniteDescriptorKey, -> bool);
     impl_log_method!(provider_lookup_tap_key_spend_sig, pk: &DefiniteDescriptorKey, -> Option<usize>);
     impl_log_method!(provider_lookup_tap_leaf_script_sig, pk: &DefiniteDescriptorKey, leaf_hash: &TapLeafHash, -> Option<usize>);
-    impl_log_method!(provider_lookup_tap_control_block_map, -> Option<&BTreeMap<ControlBlock, (bitcoin::ScriptBuf, LeafVersion)>>);
-    impl_log_method!(provider_lookup_raw_pkh_pk, hash: &hash160::Hash, -> Option<bitcoin::PublicKey>);
+    impl_log_method!(provider_lookup_tap_control_block_map, -> Option<&BTreeMap<ControlBlock, (tapyrus::ScriptBuf, LeafVersion)>>);
+    impl_log_method!(provider_lookup_raw_pkh_pk, hash: &hash160::Hash, -> Option<tapyrus::PublicKey>);
     impl_log_method!(provider_lookup_raw_pkh_x_only_pk, hash: &hash160::Hash, -> Option<XOnlyPublicKey>);
-    impl_log_method!(provider_lookup_raw_pkh_ecdsa_sig, hash: &hash160::Hash, -> Option<bitcoin::PublicKey>);
+    impl_log_method!(provider_lookup_raw_pkh_ecdsa_sig, hash: &hash160::Hash, -> Option<tapyrus::PublicKey>);
     impl_log_method!(provider_lookup_raw_pkh_tap_leaf_script_sig, hash: &(hash160::Hash, TapLeafHash), -> Option<(XOnlyPublicKey, usize)>);
     impl_log_method!(provider_lookup_sha256, hash: &sha256::Hash, -> bool);
     impl_log_method!(provider_lookup_hash256, hash: &hash256::Hash, -> bool);
@@ -165,11 +165,11 @@ where
 
     fn provider_lookup_tap_control_block_map(
         &self,
-    ) -> Option<&BTreeMap<ControlBlock, (bitcoin::ScriptBuf, LeafVersion)>> {
+    ) -> Option<&BTreeMap<ControlBlock, (tapyrus::ScriptBuf, LeafVersion)>> {
         Satisfier::lookup_tap_control_block_map(self)
     }
 
-    fn provider_lookup_raw_pkh_pk(&self, hash: &hash160::Hash) -> Option<bitcoin::PublicKey> {
+    fn provider_lookup_raw_pkh_pk(&self, hash: &hash160::Hash) -> Option<tapyrus::PublicKey> {
         Satisfier::lookup_raw_pkh_pk(self, hash)
     }
 
@@ -180,7 +180,7 @@ where
     fn provider_lookup_raw_pkh_ecdsa_sig(
         &self,
         hash: &hash160::Hash,
-    ) -> Option<bitcoin::PublicKey> {
+    ) -> Option<tapyrus::PublicKey> {
         Satisfier::lookup_raw_pkh_ecdsa_sig(self, hash).map(|(pk, _)| pk)
     }
 
@@ -273,7 +273,7 @@ impl Plan {
         &self,
         stfr: &Sat,
     ) -> Result<(Vec<Vec<u8>>, ScriptBuf), Error> {
-        use bitcoin::blockdata::script::Builder;
+        use tapyrus::blockdata::script::Builder;
 
         let stack = self
             .template
@@ -735,9 +735,9 @@ impl Assets {
 mod test {
     use std::str::FromStr;
 
-    use bitcoin::absolute::LockTime;
-    use bitcoin::bip32::Xpub;
-    use bitcoin::Sequence;
+    use tapyrus::absolute::LockTime;
+    use tapyrus::bip32::Xpub;
+    use tapyrus::Sequence;
 
     use super::*;
     use crate::*;
@@ -1060,7 +1060,7 @@ mod test {
         let first_branch = DescriptorPublicKey::from_str(&format!("{}/0/1", xpub)).unwrap();
         let second_branch = DescriptorPublicKey::from_str(&format!("{}/1/*", xpub)).unwrap(); // Note this is a wildcard key, so it can sign for the whole multi_a
 
-        let mut psbt_input = bitcoin::psbt::Input::default();
+        let mut psbt_input = tapyrus::psbt::Input::default();
         let assets = Assets::new().add(internal_key);
         desc.clone()
             .plan(&assets)
@@ -1071,7 +1071,7 @@ mod test {
         assert_eq!(psbt_input.tap_key_origins.len(), 1, "Unexpected number of tap_key_origins");
         assert_eq!(psbt_input.tap_scripts.len(), 0, "Unexpected number of tap_scripts");
 
-        let mut psbt_input = bitcoin::psbt::Input::default();
+        let mut psbt_input = tapyrus::psbt::Input::default();
         let assets = Assets::new().add(first_branch);
         desc.clone()
             .plan(&assets)
@@ -1082,7 +1082,7 @@ mod test {
         assert_eq!(psbt_input.tap_key_origins.len(), 1, "Unexpected number of tap_key_origins");
         assert_eq!(psbt_input.tap_scripts.len(), 1, "Unexpected number of tap_scripts");
 
-        let mut psbt_input = bitcoin::psbt::Input::default();
+        let mut psbt_input = tapyrus::psbt::Input::default();
         let assets = Assets::new().add(second_branch);
         desc.plan(&assets)
             .unwrap()
@@ -1105,7 +1105,7 @@ mod test {
 
         let asset_key = DescriptorPublicKey::from_str(&format!("{}/1/*", xpub)).unwrap(); // Note this is a wildcard key, so it can sign for the whole multi
 
-        let mut psbt_input = bitcoin::psbt::Input::default();
+        let mut psbt_input = tapyrus::psbt::Input::default();
         let assets = Assets::new().add(asset_key);
         desc.plan(&assets)
             .unwrap()
