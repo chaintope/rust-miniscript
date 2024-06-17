@@ -747,30 +747,15 @@ impl PsbtExt for Psbt {
 
         let expected_spk = {
             match (&input.witness_utxo, &input.non_witness_utxo) {
-                (Some(witness_utxo), None) => {
-                    if desc_type.segwit_version().is_some() {
-                        witness_utxo.script_pubkey.clone()
-                    } else {
-                        return Err(UtxoUpdateError::UtxoCheck);
-                    }
-                }
                 (None, Some(non_witness_utxo)) => non_witness_utxo
                     .output
                     .get(txin.previous_output.vout as usize)
                     .ok_or(UtxoUpdateError::UtxoCheck)?
                     .script_pubkey
                     .clone(),
-                (Some(witness_utxo), Some(non_witness_utxo)) => {
-                    if witness_utxo
-                        != non_witness_utxo
-                            .output
-                            .get(txin.previous_output.vout as usize)
-                            .ok_or(UtxoUpdateError::UtxoCheck)?
-                    {
-                        return Err(UtxoUpdateError::UtxoCheck);
-                    }
-
-                    witness_utxo.script_pubkey.clone()
+                (Some(_), _) => {
+                    /// This should not happen as tapyrus does not support segwit.
+                    return Err(UtxoUpdateError::UtxoCheck)
                 }
                 (None, None) => return Err(UtxoUpdateError::UtxoCheck),
             }
@@ -1192,19 +1177,13 @@ fn update_item_with_descriptor_helper<F: PsbtFields>(
         item.bip32_derivation().append(&mut bip32_derivation.0);
 
         match &derived {
-            Descriptor::Bare(_) | Descriptor::Pkh(_) | Descriptor::Wpkh(_) => {}
+            Descriptor::Bare(_) | Descriptor::Pkh(_)  => {}
             Descriptor::Sh(sh) => match sh.as_inner() {
-                descriptor::ShInner::Wsh(wsh) => {
-                    *item.witness_script() = Some(wsh.inner_script());
-                    *item.redeem_script() = Some(wsh.inner_script().to_p2wsh());
-                }
-                descriptor::ShInner::Wpkh(..) => *item.redeem_script() = Some(sh.inner_script()),
                 descriptor::ShInner::SortedMulti(_) | descriptor::ShInner::Ms(_) => {
                     *item.redeem_script() = Some(sh.inner_script())
                 }
             },
-            Descriptor::Wsh(wsh) => *item.witness_script() = Some(wsh.inner_script()),
-            Descriptor::Tr(_) => unreachable!("Tr is dealt with separately"),
+              Descriptor::Tr(_) => unreachable!("Tr is dealt with separately"),
         }
 
         derived

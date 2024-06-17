@@ -22,7 +22,7 @@ use tapyrus::hashes::{hash160, ripemd160, sha256};
 use tapyrus::key::XOnlyPublicKey;
 use tapyrus::script::PushBytesBuf;
 use tapyrus::taproot::{ControlBlock, LeafVersion, TapLeafHash};
-use tapyrus::{bip32, psbt, ScriptBuf, Sequence, WitnessVersion};
+use tapyrus::{bip32, psbt, ScriptBuf, Sequence};
 
 use crate::descriptor::{self, Descriptor, DescriptorType, KeyMap};
 use crate::miniscript::hash256;
@@ -233,39 +233,13 @@ impl Plan {
     /// Returns the witness template
     pub fn witness_template(&self) -> &Vec<Placeholder<DefiniteDescriptorKey>> { &self.template }
 
-    /// Returns the witness version
-    pub fn witness_version(&self) -> Option<WitnessVersion> {
-        self.descriptor.desc_type().segwit_version()
-    }
-
     /// The weight, in witness units, needed for satisfying this plan (includes both
     /// the script sig weight and the witness weight)
-    pub fn satisfaction_weight(&self) -> usize { self.witness_size() + self.scriptsig_size() * 4 }
+    pub fn satisfaction_weight(&self) -> usize { self.scriptsig_size() * 4 }
 
     /// The size in bytes of the script sig that satisfies this plan
     pub fn scriptsig_size(&self) -> usize {
-        match (self.descriptor.desc_type().segwit_version(), self.descriptor.desc_type()) {
-            // Entire witness goes in the script_sig
-            (None, _) => witness_size(self.template.as_ref()),
-            // Taproot doesn't have a "wrapped" version (scriptSig len (1))
-            (Some(WitnessVersion::V1), _) => 1,
-            // scriptSig len (1) + OP_0 (1) + OP_PUSHBYTES_20 (1) + <pk hash> (20)
-            (_, DescriptorType::ShWpkh) => 1 + 1 + 1 + 20,
-            // scriptSig len (1) + OP_0 (1) + OP_PUSHBYTES_32 (1) + <script hash> (32)
-            (_, DescriptorType::ShWsh) | (_, DescriptorType::ShWshSortedMulti) => 1 + 1 + 1 + 32,
-            // Native Segwit v0 (scriptSig len (1))
-            _ => 1,
-        }
-    }
-
-    /// The size in bytes of the witness that satisfies this plan
-    pub fn witness_size(&self) -> usize {
-        if self.descriptor.desc_type().segwit_version().is_some() {
-            witness_size(self.template.as_ref())
-        } else {
-            0 // should be 1 if there's at least one segwit input in the tx, but that's out of
-              // scope as we can't possibly know that just by looking at the descriptor
-        }
+        witness_size(self.template.as_ref())
     }
 
     /// Try creating the final script_sig and witness using a [`Satisfier`]
@@ -298,13 +272,7 @@ impl Plan {
                     })
                     .into_script(),
             ),
-            DescriptorType::Wpkh
-            | DescriptorType::Wsh
-            | DescriptorType::WshSortedMulti
-            | DescriptorType::Tr => (stack, ScriptBuf::new()),
-            DescriptorType::ShWsh | DescriptorType::ShWshSortedMulti | DescriptorType::ShWpkh => {
-                (stack, self.descriptor.unsigned_script_sig())
-            }
+            DescriptorType::Tr => (stack, ScriptBuf::new())
         })
     }
 
@@ -408,18 +376,12 @@ impl Plan {
             }
 
             match &self.descriptor {
-                Descriptor::Bare(_) | Descriptor::Pkh(_) | Descriptor::Wpkh(_) => {}
+                Descriptor::Bare(_) | Descriptor::Pkh(_) => {}
                 Descriptor::Sh(sh) => match sh.as_inner() {
-                    descriptor::ShInner::Wsh(wsh) => {
-                        input.witness_script = Some(wsh.inner_script());
-                        input.redeem_script = Some(wsh.inner_script().to_p2wsh());
-                    }
-                    descriptor::ShInner::Wpkh(..) => input.redeem_script = Some(sh.inner_script()),
                     descriptor::ShInner::SortedMulti(_) | descriptor::ShInner::Ms(_) => {
                         input.redeem_script = Some(sh.inner_script())
                     }
                 },
-                Descriptor::Wsh(wsh) => input.witness_script = Some(wsh.inner_script()),
                 Descriptor::Tr(_) => unreachable!("Tr is dealt with separately"),
             }
         }

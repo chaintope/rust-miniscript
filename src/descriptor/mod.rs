@@ -16,12 +16,12 @@ use core::ops::Range;
 use core::str::{self, FromStr};
 
 use tapyrus::hashes::{hash160, ripemd160, sha256};
-use tapyrus::{secp256k1, Address, Network, Script, ScriptBuf, TxIn, Witness, WitnessVersion};
+use tapyrus::{secp256k1, Address, Network, Script, ScriptBuf, TxIn, Witness};
 use sync::Arc;
 
 use self::checksum::verify_checksum;
 use crate::miniscript::decode::Terminal;
-use crate::miniscript::{satisfy, Legacy, Miniscript, Segwitv0};
+use crate::miniscript::{satisfy, Legacy, Miniscript};
 use crate::plan::{AssetProvider, Plan};
 use crate::prelude::*;
 use crate::{
@@ -30,14 +30,12 @@ use crate::{
 };
 
 mod bare;
-mod segwitv0;
 mod sh;
 mod sortedmulti;
 mod tr;
 
 // Descriptor Exports
 pub use self::bare::{Bare, Pkh};
-pub use self::segwitv0::{Wpkh, Wsh, WshInner};
 pub use self::sh::{Sh, ShInner};
 pub use self::sortedmulti::SortedMultiVec;
 pub use self::tr::{TapTree, Tr};
@@ -66,12 +64,8 @@ pub enum Descriptor<Pk: MiniscriptKey> {
     Bare(Bare<Pk>),
     /// Pay-to-PubKey-Hash
     Pkh(Pkh<Pk>),
-    /// Pay-to-Witness-PubKey-Hash
-    Wpkh(Wpkh<Pk>),
     /// Pay-to-ScriptHash(includes nested wsh/wpkh/sorted multi)
     Sh(Sh<Pk>),
-    /// Pay-to-Witness-ScriptHash with Segwitv0 context
-    Wsh(Wsh<Pk>),
     /// Pay-to-Taproot
     Tr(Tr<Pk>),
 }
@@ -86,19 +80,9 @@ impl<Pk: MiniscriptKey> From<Pkh<Pk>> for Descriptor<Pk> {
     fn from(inner: Pkh<Pk>) -> Self { Descriptor::Pkh(inner) }
 }
 
-impl<Pk: MiniscriptKey> From<Wpkh<Pk>> for Descriptor<Pk> {
-    #[inline]
-    fn from(inner: Wpkh<Pk>) -> Self { Descriptor::Wpkh(inner) }
-}
-
 impl<Pk: MiniscriptKey> From<Sh<Pk>> for Descriptor<Pk> {
     #[inline]
     fn from(inner: Sh<Pk>) -> Self { Descriptor::Sh(inner) }
-}
-
-impl<Pk: MiniscriptKey> From<Wsh<Pk>> for Descriptor<Pk> {
-    #[inline]
-    fn from(inner: Wsh<Pk>) -> Self { Descriptor::Wsh(inner) }
 }
 
 impl<Pk: MiniscriptKey> From<Tr<Pk>> for Descriptor<Pk> {
@@ -115,38 +99,10 @@ pub enum DescriptorType {
     Sh,
     /// Pkh Descriptor
     Pkh,
-    /// Wpkh Descriptor
-    Wpkh,
-    /// Wsh
-    Wsh,
-    /// Sh Wrapped Wsh
-    ShWsh,
-    /// Sh wrapped Wpkh
-    ShWpkh,
     /// Sh Sorted Multi
     ShSortedMulti,
-    /// Wsh Sorted Multi
-    WshSortedMulti,
-    /// Sh Wsh Sorted Multi
-    ShWshSortedMulti,
     /// Tr Descriptor
     Tr,
-}
-
-impl DescriptorType {
-    /// Returns the segwit version implied by the descriptor type.
-    ///
-    /// This will return `Some(WitnessVersion::V0)` whether it is "native" segwitv0 or "wrapped" p2sh segwit.
-    pub fn segwit_version(&self) -> Option<WitnessVersion> {
-        use self::DescriptorType::*;
-        match self {
-            Tr => Some(WitnessVersion::V1),
-            Wpkh | ShWpkh | Wsh | ShWsh | ShWshSortedMulti | WshSortedMulti => {
-                Some(WitnessVersion::V0)
-            }
-            Bare | Sh | Pkh | ShSortedMulti => None,
-        }
-    }
 }
 
 impl<Pk: MiniscriptKey> Descriptor<Pk> {
@@ -165,14 +121,6 @@ impl<Pk: MiniscriptKey> Descriptor<Pk> {
     /// Create a new PkH descriptor
     pub fn new_pkh(pk: Pk) -> Result<Self, Error> { Ok(Descriptor::Pkh(Pkh::new(pk)?)) }
 
-    /// Create a new Wpkh descriptor
-    /// Will return Err if uncompressed key is used
-    pub fn new_wpkh(pk: Pk) -> Result<Self, Error> { Ok(Descriptor::Wpkh(Wpkh::new(pk)?)) }
-
-    /// Create a new sh wrapped wpkh from `Pk`.
-    /// Errors when uncompressed keys are supplied
-    pub fn new_sh_wpkh(pk: Pk) -> Result<Self, Error> { Ok(Descriptor::Sh(Sh::new_wpkh(pk)?)) }
-
     // Miniscripts
 
     /// Create a new sh for a given redeem script
@@ -182,34 +130,12 @@ impl<Pk: MiniscriptKey> Descriptor<Pk> {
         Ok(Descriptor::Sh(Sh::new(ms)?))
     }
 
-    /// Create a new wsh descriptor from witness script
-    /// Errors when miniscript exceeds resource limits under p2sh context
-    /// or does not type check at the top level
-    pub fn new_wsh(ms: Miniscript<Pk, Segwitv0>) -> Result<Self, Error> {
-        Ok(Descriptor::Wsh(Wsh::new(ms)?))
-    }
-
-    /// Create a new sh wrapped wsh descriptor with witness script
-    /// Errors when miniscript exceeds resource limits under wsh context
-    /// or does not type check at the top level
-    pub fn new_sh_wsh(ms: Miniscript<Pk, Segwitv0>) -> Result<Self, Error> {
-        Ok(Descriptor::Sh(Sh::new_wsh(ms)?))
-    }
-
     /// Create a new bare descriptor from witness script
     /// Errors when miniscript exceeds resource limits under bare context
     /// or does not type check at the top level
     pub fn new_bare(ms: Miniscript<Pk, BareCtx>) -> Result<Self, Error> {
         Ok(Descriptor::Bare(Bare::new(ms)?))
     }
-
-    // Wrap with sh
-
-    /// Create a new sh wrapper for the given wpkh descriptor
-    pub fn new_sh_with_wpkh(wpkh: Wpkh<Pk>) -> Self { Descriptor::Sh(Sh::new_with_wpkh(wpkh)) }
-
-    /// Create a new sh wrapper for the given wsh descriptor
-    pub fn new_sh_with_wsh(wsh: Wsh<Pk>) -> Self { Descriptor::Sh(Sh::new_with_wsh(wsh)) }
 
     // sorted multi
 
@@ -218,19 +144,6 @@ impl<Pk: MiniscriptKey> Descriptor<Pk> {
     /// Errors when miniscript exceeds resource limits under p2sh context
     pub fn new_sh_sortedmulti(k: usize, pks: Vec<Pk>) -> Result<Self, Error> {
         Ok(Descriptor::Sh(Sh::new_sortedmulti(k, pks)?))
-    }
-
-    /// Create a new sh wrapped wsh sortedmulti descriptor from threshold
-    /// `k` and Vec of `pks`
-    /// Errors when miniscript exceeds resource limits under segwit context
-    pub fn new_sh_wsh_sortedmulti(k: usize, pks: Vec<Pk>) -> Result<Self, Error> {
-        Ok(Descriptor::Sh(Sh::new_wsh_sortedmulti(k, pks)?))
-    }
-
-    /// Create a new wsh sorted multi descriptor
-    /// Errors when miniscript exceeds resource limits under p2sh context
-    pub fn new_wsh_sortedmulti(k: usize, pks: Vec<Pk>) -> Result<Self, Error> {
-        Ok(Descriptor::Wsh(Wsh::new_sortedmulti(k, pks)?))
     }
 
     /// Create new tr descriptor
@@ -244,19 +157,9 @@ impl<Pk: MiniscriptKey> Descriptor<Pk> {
         match *self {
             Descriptor::Bare(ref _bare) => DescriptorType::Bare,
             Descriptor::Pkh(ref _pkh) => DescriptorType::Pkh,
-            Descriptor::Wpkh(ref _wpkh) => DescriptorType::Wpkh,
             Descriptor::Sh(ref sh) => match sh.as_inner() {
-                ShInner::Wsh(ref wsh) => match wsh.as_inner() {
-                    WshInner::SortedMulti(ref _smv) => DescriptorType::ShWshSortedMulti,
-                    WshInner::Ms(ref _ms) => DescriptorType::ShWsh,
-                },
-                ShInner::Wpkh(ref _wpkh) => DescriptorType::ShWpkh,
                 ShInner::SortedMulti(ref _smv) => DescriptorType::ShSortedMulti,
                 ShInner::Ms(ref _ms) => DescriptorType::Sh,
-            },
-            Descriptor::Wsh(ref wsh) => match wsh.as_inner() {
-                WshInner::SortedMulti(ref _smv) => DescriptorType::WshSortedMulti,
-                WshInner::Ms(ref _ms) => DescriptorType::Wsh,
             },
             Descriptor::Tr(ref _tr) => DescriptorType::Tr,
         }
@@ -275,8 +178,6 @@ impl<Pk: MiniscriptKey> Descriptor<Pk> {
         match *self {
             Descriptor::Bare(ref bare) => bare.sanity_check(),
             Descriptor::Pkh(_) => Ok(()),
-            Descriptor::Wpkh(ref wpkh) => wpkh.sanity_check(),
-            Descriptor::Wsh(ref wsh) => wsh.sanity_check(),
             Descriptor::Sh(ref sh) => sh.sanity_check(),
             Descriptor::Tr(ref tr) => tr.sanity_check(),
         }
@@ -324,8 +225,6 @@ impl<Pk: MiniscriptKey> Descriptor<Pk> {
         let weight = match *self {
             Descriptor::Bare(ref bare) => bare.max_weight_to_satisfy()?,
             Descriptor::Pkh(ref pkh) => pkh.max_weight_to_satisfy(),
-            Descriptor::Wpkh(ref wpkh) => wpkh.max_weight_to_satisfy(),
-            Descriptor::Wsh(ref wsh) => wsh.max_weight_to_satisfy()?,
             Descriptor::Sh(ref sh) => sh.max_weight_to_satisfy()?,
             Descriptor::Tr(ref tr) => tr.max_weight_to_satisfy()?,
         };
@@ -347,8 +246,6 @@ impl<Pk: MiniscriptKey> Descriptor<Pk> {
         let weight = match *self {
             Descriptor::Bare(ref bare) => bare.max_satisfaction_weight()?,
             Descriptor::Pkh(ref pkh) => pkh.max_satisfaction_weight(),
-            Descriptor::Wpkh(ref wpkh) => wpkh.max_satisfaction_weight(),
-            Descriptor::Wsh(ref wsh) => wsh.max_satisfaction_weight()?,
             Descriptor::Sh(ref sh) => sh.max_satisfaction_weight()?,
             Descriptor::Tr(ref tr) => tr.max_satisfaction_weight()?,
         };
@@ -367,8 +264,6 @@ impl<Pk: MiniscriptKey + ToPublicKey> Descriptor<Pk> {
         match *self {
             Descriptor::Bare(_) => Err(Error::BareDescriptorAddr),
             Descriptor::Pkh(ref pkh) => Ok(pkh.address(network)),
-            Descriptor::Wpkh(ref wpkh) => Ok(wpkh.address(network)),
-            Descriptor::Wsh(ref wsh) => Ok(wsh.address(network)),
             Descriptor::Sh(ref sh) => Ok(sh.address(network)),
             Descriptor::Tr(ref tr) => Ok(tr.address(network)),
         }
@@ -379,8 +274,6 @@ impl<Pk: MiniscriptKey + ToPublicKey> Descriptor<Pk> {
         match *self {
             Descriptor::Bare(ref bare) => bare.script_pubkey(),
             Descriptor::Pkh(ref pkh) => pkh.script_pubkey(),
-            Descriptor::Wpkh(ref wpkh) => wpkh.script_pubkey(),
-            Descriptor::Wsh(ref wsh) => wsh.script_pubkey(),
             Descriptor::Sh(ref sh) => sh.script_pubkey(),
             Descriptor::Tr(ref tr) => tr.script_pubkey(),
         }
@@ -397,8 +290,6 @@ impl<Pk: MiniscriptKey + ToPublicKey> Descriptor<Pk> {
         match *self {
             Descriptor::Bare(_) => ScriptBuf::new(),
             Descriptor::Pkh(_) => ScriptBuf::new(),
-            Descriptor::Wpkh(_) => ScriptBuf::new(),
-            Descriptor::Wsh(_) => ScriptBuf::new(),
             Descriptor::Sh(ref sh) => sh.unsigned_script_sig(),
             Descriptor::Tr(_) => ScriptBuf::new(),
         }
@@ -414,8 +305,6 @@ impl<Pk: MiniscriptKey + ToPublicKey> Descriptor<Pk> {
         match *self {
             Descriptor::Bare(ref bare) => Ok(bare.script_pubkey()),
             Descriptor::Pkh(ref pkh) => Ok(pkh.script_pubkey()),
-            Descriptor::Wpkh(ref wpkh) => Ok(wpkh.script_pubkey()),
-            Descriptor::Wsh(ref wsh) => Ok(wsh.inner_script()),
             Descriptor::Sh(ref sh) => Ok(sh.inner_script()),
             Descriptor::Tr(_) => Err(Error::TrNoScriptCode),
         }
@@ -432,8 +321,6 @@ impl<Pk: MiniscriptKey + ToPublicKey> Descriptor<Pk> {
         match *self {
             Descriptor::Bare(ref bare) => Ok(bare.ecdsa_sighash_script_code()),
             Descriptor::Pkh(ref pkh) => Ok(pkh.ecdsa_sighash_script_code()),
-            Descriptor::Wpkh(ref wpkh) => Ok(wpkh.ecdsa_sighash_script_code()),
-            Descriptor::Wsh(ref wsh) => Ok(wsh.ecdsa_sighash_script_code()),
             Descriptor::Sh(ref sh) => Ok(sh.ecdsa_sighash_script_code()),
             Descriptor::Tr(_) => Err(Error::TrNoScriptCode),
         }
@@ -449,8 +336,6 @@ impl<Pk: MiniscriptKey + ToPublicKey> Descriptor<Pk> {
         match *self {
             Descriptor::Bare(ref bare) => bare.get_satisfaction(satisfier),
             Descriptor::Pkh(ref pkh) => pkh.get_satisfaction(satisfier),
-            Descriptor::Wpkh(ref wpkh) => wpkh.get_satisfaction(satisfier),
-            Descriptor::Wsh(ref wsh) => wsh.get_satisfaction(satisfier),
             Descriptor::Sh(ref sh) => sh.get_satisfaction(satisfier),
             Descriptor::Tr(ref tr) => tr.get_satisfaction(&satisfier),
         }
@@ -466,8 +351,6 @@ impl<Pk: MiniscriptKey + ToPublicKey> Descriptor<Pk> {
         match *self {
             Descriptor::Bare(ref bare) => bare.get_satisfaction_mall(satisfier),
             Descriptor::Pkh(ref pkh) => pkh.get_satisfaction_mall(satisfier),
-            Descriptor::Wpkh(ref wpkh) => wpkh.get_satisfaction_mall(satisfier),
-            Descriptor::Wsh(ref wsh) => wsh.get_satisfaction_mall(satisfier),
             Descriptor::Sh(ref sh) => sh.get_satisfaction_mall(satisfier),
             Descriptor::Tr(ref tr) => tr.get_satisfaction_mall(&satisfier),
         }
@@ -498,8 +381,6 @@ impl Descriptor<DefiniteDescriptorKey> {
         let satisfaction = match self {
             Descriptor::Bare(ref bare) => bare.plan_satisfaction(provider),
             Descriptor::Pkh(ref pkh) => pkh.plan_satisfaction(provider),
-            Descriptor::Wpkh(ref wpkh) => wpkh.plan_satisfaction(provider),
-            Descriptor::Wsh(ref wsh) => wsh.plan_satisfaction(provider),
             Descriptor::Sh(ref sh) => sh.plan_satisfaction(provider),
             Descriptor::Tr(ref tr) => tr.plan_satisfaction(provider),
         };
@@ -526,8 +407,6 @@ impl Descriptor<DefiniteDescriptorKey> {
         let satisfaction = match self {
             Descriptor::Bare(ref bare) => bare.plan_satisfaction_mall(provider),
             Descriptor::Pkh(ref pkh) => pkh.plan_satisfaction_mall(provider),
-            Descriptor::Wpkh(ref wpkh) => wpkh.plan_satisfaction_mall(provider),
-            Descriptor::Wsh(ref wsh) => wsh.plan_satisfaction_mall(provider),
             Descriptor::Sh(ref sh) => sh.plan_satisfaction_mall(provider),
             Descriptor::Tr(ref tr) => tr.plan_satisfaction_mall(provider),
         };
@@ -560,9 +439,7 @@ where
         let desc = match *self {
             Descriptor::Bare(ref bare) => Descriptor::Bare(bare.translate_pk(t)?),
             Descriptor::Pkh(ref pk) => Descriptor::Pkh(pk.translate_pk(t)?),
-            Descriptor::Wpkh(ref pk) => Descriptor::Wpkh(pk.translate_pk(t)?),
             Descriptor::Sh(ref sh) => Descriptor::Sh(sh.translate_pk(t)?),
-            Descriptor::Wsh(ref wsh) => Descriptor::Wsh(wsh.translate_pk(t)?),
             Descriptor::Tr(ref tr) => Descriptor::Tr(tr.translate_pk(t)?),
         };
         Ok(desc)
@@ -574,8 +451,6 @@ impl<Pk: MiniscriptKey> ForEachKey<Pk> for Descriptor<Pk> {
         match *self {
             Descriptor::Bare(ref bare) => bare.for_each_key(pred),
             Descriptor::Pkh(ref pkh) => pkh.for_each_key(pred),
-            Descriptor::Wpkh(ref wpkh) => wpkh.for_each_key(pred),
-            Descriptor::Wsh(ref wsh) => wsh.for_each_key(pred),
             Descriptor::Sh(ref sh) => sh.for_each_key(pred),
             Descriptor::Tr(ref tr) => tr.for_each_key(pred),
         }
@@ -921,9 +796,7 @@ impl_from_tree!(
     fn from_tree(top: &expression::Tree) -> Result<Descriptor<Pk>, Error> {
         Ok(match (top.name, top.args.len() as u32) {
             ("pkh", 1) => Descriptor::Pkh(Pkh::from_tree(top)?),
-            ("wpkh", 1) => Descriptor::Wpkh(Wpkh::from_tree(top)?),
             ("sh", 1) => Descriptor::Sh(Sh::from_tree(top)?),
-            ("wsh", 1) => Descriptor::Wsh(Wsh::from_tree(top)?),
             ("tr", _) => Descriptor::Tr(Tr::from_tree(top)?),
             _ => Descriptor::Bare(Bare::from_tree(top)?),
         })
@@ -954,9 +827,7 @@ impl<Pk: MiniscriptKey> fmt::Debug for Descriptor<Pk> {
         match *self {
             Descriptor::Bare(ref sub) => fmt::Debug::fmt(sub, f),
             Descriptor::Pkh(ref pkh) => fmt::Debug::fmt(pkh, f),
-            Descriptor::Wpkh(ref wpkh) => fmt::Debug::fmt(wpkh, f),
             Descriptor::Sh(ref sub) => fmt::Debug::fmt(sub, f),
-            Descriptor::Wsh(ref sub) => fmt::Debug::fmt(sub, f),
             Descriptor::Tr(ref tr) => fmt::Debug::fmt(tr, f),
         }
     }
@@ -967,9 +838,7 @@ impl<Pk: MiniscriptKey> fmt::Display for Descriptor<Pk> {
         match *self {
             Descriptor::Bare(ref sub) => fmt::Display::fmt(sub, f),
             Descriptor::Pkh(ref pkh) => fmt::Display::fmt(pkh, f),
-            Descriptor::Wpkh(ref wpkh) => fmt::Display::fmt(wpkh, f),
             Descriptor::Sh(ref sub) => fmt::Display::fmt(sub, f),
-            Descriptor::Wsh(ref sub) => fmt::Display::fmt(sub, f),
             Descriptor::Tr(ref tr) => fmt::Display::fmt(tr, f),
         }
     }

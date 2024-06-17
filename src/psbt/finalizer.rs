@@ -21,7 +21,7 @@ use super::{sanity_check, Error, InputError, Psbt, PsbtInputSatisfier};
 use crate::prelude::*;
 use crate::util::witness_size;
 use crate::{
-    interpreter, BareCtx, Descriptor, ExtParams, Legacy, Miniscript, Satisfier, Segwitv0, SigType,
+    interpreter, BareCtx, Descriptor, ExtParams, Legacy, Miniscript, Satisfier, SigType,
     Tap, ToPublicKey,
 };
 
@@ -179,39 +179,6 @@ fn get_descriptor(psbt: &Psbt, index: usize) -> Result<Descriptor<PublicKey>, In
             Some((pk, _sig)) => Descriptor::new_pkh(*pk).map_err(InputError::from),
             None => Err(InputError::MissingPubkey),
         }
-    } else if script_pubkey.is_p2wpkh() {
-        // 3. `Wpkh`: creates a `wpkh` descriptor if the partial sig has corresponding pk.
-        let partial_sig_contains_pk = inp.partial_sigs.iter().find(|&(&pk, _sig)| {
-            // Indirect way to check the equivalence of pubkey-hashes.
-            // Create a pubkey hash and check if they are the same.
-            let addr = tapyrus::Address::p2wpkh(&pk, tapyrus::Network::Prod)
-                .expect("Address corresponding to valid pubkey");
-            *script_pubkey == addr.script_pubkey()
-        });
-        match partial_sig_contains_pk {
-            Some((pk, _sig)) => Ok(Descriptor::new_wpkh(*pk)?),
-            None => Err(InputError::MissingPubkey),
-        }
-    } else if script_pubkey.is_p2wsh() {
-        // 4. `Wsh`: creates a `Wsh` descriptor
-        if inp.redeem_script.is_some() {
-            return Err(InputError::NonEmptyRedeemScript);
-        }
-        if let Some(ref witness_script) = inp.witness_script {
-            if witness_script.to_p2wsh() != *script_pubkey {
-                return Err(InputError::InvalidWitnessScript {
-                    witness_script: witness_script.clone(),
-                    p2wsh_expected: script_pubkey.clone(),
-                });
-            }
-            let ms = Miniscript::<tapyrus::PublicKey, Segwitv0>::parse_with_ext(
-                witness_script,
-                &ExtParams::allow_all(),
-            )?;
-            Ok(Descriptor::new_wsh(ms.substitute_raw_pkh(&map))?)
-        } else {
-            Err(InputError::MissingWitnessScript)
-        }
     } else if script_pubkey.is_p2sh() {
         match inp.redeem_script {
             None => Err(InputError::MissingRedeemScript),
@@ -222,48 +189,19 @@ fn get_descriptor(psbt: &Psbt, index: usize) -> Result<Descriptor<PublicKey>, In
                         p2sh_expected: script_pubkey.clone(),
                     });
                 }
-                if redeem_script.is_p2wsh() {
-                    // 5. `ShWsh` case
-                    if let Some(ref witness_script) = inp.witness_script {
-                        if witness_script.to_p2wsh() != *redeem_script {
-                            return Err(InputError::InvalidWitnessScript {
-                                witness_script: witness_script.clone(),
-                                p2wsh_expected: redeem_script.clone(),
-                            });
-                        }
-                        let ms = Miniscript::<tapyrus::PublicKey, Segwitv0>::parse_with_ext(
-                            witness_script,
-                            &ExtParams::allow_all(),
-                        )?;
-                        Ok(Descriptor::new_sh_wsh(ms.substitute_raw_pkh(&map))?)
-                    } else {
-                        Err(InputError::MissingWitnessScript)
-                    }
-                } else if redeem_script.is_p2wpkh() {
-                    // 6. `ShWpkh` case
-                    let partial_sig_contains_pk = inp.partial_sigs.iter().find(|&(&pk, _sig)| {
-                        let addr = tapyrus::Address::p2wpkh(&pk, tapyrus::Network::Prod)
-                            .expect("Address corresponding to valid pubkey");
-                        *redeem_script == addr.script_pubkey()
-                    });
-                    match partial_sig_contains_pk {
-                        Some((pk, _sig)) => Ok(Descriptor::new_sh_wpkh(*pk)?),
-                        None => Err(InputError::MissingPubkey),
-                    }
+
+                // regular p2sh
+                if inp.witness_script.is_some() {
+                    return Err(InputError::NonEmptyWitnessScript);
+                }
+                if let Some(ref redeem_script) = inp.redeem_script {
+                    let ms = Miniscript::<tapyrus::PublicKey, Legacy>::parse_with_ext(
+                        redeem_script,
+                        &ExtParams::allow_all(),
+                    )?;
+                    Ok(Descriptor::new_sh(ms)?)
                 } else {
-                    //7. regular p2sh
-                    if inp.witness_script.is_some() {
-                        return Err(InputError::NonEmptyWitnessScript);
-                    }
-                    if let Some(ref redeem_script) = inp.redeem_script {
-                        let ms = Miniscript::<tapyrus::PublicKey, Legacy>::parse_with_ext(
-                            redeem_script,
-                            &ExtParams::allow_all(),
-                        )?;
-                        Ok(Descriptor::new_sh(ms)?)
-                    } else {
-                        Err(InputError::MissingWitnessScript)
-                    }
+                    Err(InputError::MissingWitnessScript)
                 }
             }
         }

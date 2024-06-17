@@ -169,8 +169,6 @@ impl<Pk: MiniscriptKey> Liftable<Pk> for Descriptor<Pk> {
         match *self {
             Descriptor::Bare(ref bare) => bare.lift(),
             Descriptor::Pkh(ref pkh) => pkh.lift(),
-            Descriptor::Wpkh(ref wpkh) => wpkh.lift(),
-            Descriptor::Wsh(ref wsh) => wsh.lift(),
             Descriptor::Sh(ref sh) => sh.lift(),
             Descriptor::Tr(ref tr) => tr.lift(),
         }
