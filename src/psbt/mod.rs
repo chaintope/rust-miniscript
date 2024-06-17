@@ -7,7 +7,6 @@
 //! `https://github.com/bitcoin/bips/blob/master/bip-0174.mediawiki`
 //!
 
-use core::convert::TryFrom;
 use core::fmt;
 #[cfg(feature = "std")]
 use std::error;
@@ -16,7 +15,7 @@ use tapyrus::hashes::{hash160, sha256d, Hash};
 use tapyrus::psbt::{self, Psbt};
 use tapyrus::secp256k1::{self, Secp256k1, VerifyOnly};
 use tapyrus::sighash::{self, SighashCache};
-use tapyrus::taproot::{self, ControlBlock, LeafVersion, TapLeafHash};
+use tapyrus::taproot::{ControlBlock, LeafVersion, TapLeafHash};
 use tapyrus::{absolute, bip32, transaction, Script, ScriptBuf, Sequence};
 
 use crate::miniscript::context::SigType;
@@ -737,8 +736,6 @@ impl PsbtExt for Psbt {
             .get(input_index)
             .ok_or(UtxoUpdateError::MissingInputUtxo)?;
 
-        let desc_type = desc.desc_type();
-
         if let Some(non_witness_utxo) = &input.non_witness_utxo {
             if txin.previous_output.txid != non_witness_utxo.txid() {
                 return Err(UtxoUpdateError::UtxoCheck);
@@ -754,7 +751,7 @@ impl PsbtExt for Psbt {
                     .script_pubkey
                     .clone(),
                 (Some(_), _) => {
-                    /// This should not happen as tapyrus does not support segwit.
+                    // This should not happen as tapyrus does not support segwit.
                     return Err(UtxoUpdateError::UtxoCheck)
                 }
                 (None, None) => return Err(UtxoUpdateError::UtxoCheck),
@@ -989,74 +986,33 @@ impl Translator<DefiniteDescriptorKey, tapyrus::PublicKey, descriptor::Conversio
 trait PsbtFields {
     // Common fields are returned as a mutable ref of the same type
     fn redeem_script(&mut self) -> &mut Option<ScriptBuf>;
-    fn witness_script(&mut self) -> &mut Option<ScriptBuf>;
     fn bip32_derivation(&mut self) -> &mut BTreeMap<secp256k1::PublicKey, bip32::KeySource>;
-    fn tap_internal_key(&mut self) -> &mut Option<tapyrus::key::XOnlyPublicKey>;
-    fn tap_key_origins(
-        &mut self,
-    ) -> &mut BTreeMap<tapyrus::key::XOnlyPublicKey, (Vec<TapLeafHash>, bip32::KeySource)>;
     #[allow(dead_code)]
     fn proprietary(&mut self) -> &mut BTreeMap<psbt::raw::ProprietaryKey, Vec<u8>>;
     #[allow(dead_code)]
     fn unknown(&mut self) -> &mut BTreeMap<psbt::raw::Key, Vec<u8>>;
-
-    // `tap_tree` only appears in psbt::Output, so it's returned as an option of a mutable ref
-    fn tap_tree(&mut self) -> Option<&mut Option<taproot::TapTree>> { None }
-
-    // `tap_scripts` and `tap_merkle_root` only appear in psbt::Input
-    fn tap_scripts(&mut self) -> Option<&mut BTreeMap<ControlBlock, (ScriptBuf, LeafVersion)>> {
-        None
-    }
-    fn tap_merkle_root(&mut self) -> Option<&mut Option<taproot::TapNodeHash>> { None }
 }
 
 impl PsbtFields for psbt::Input {
     fn redeem_script(&mut self) -> &mut Option<ScriptBuf> { &mut self.redeem_script }
-    fn witness_script(&mut self) -> &mut Option<ScriptBuf> { &mut self.witness_script }
     fn bip32_derivation(&mut self) -> &mut BTreeMap<secp256k1::PublicKey, bip32::KeySource> {
         &mut self.bip32_derivation
-    }
-    fn tap_internal_key(&mut self) -> &mut Option<tapyrus::key::XOnlyPublicKey> {
-        &mut self.tap_internal_key
-    }
-    fn tap_key_origins(
-        &mut self,
-    ) -> &mut BTreeMap<tapyrus::key::XOnlyPublicKey, (Vec<TapLeafHash>, bip32::KeySource)> {
-        &mut self.tap_key_origins
     }
     fn proprietary(&mut self) -> &mut BTreeMap<psbt::raw::ProprietaryKey, Vec<u8>> {
         &mut self.proprietary
     }
     fn unknown(&mut self) -> &mut BTreeMap<psbt::raw::Key, Vec<u8>> { &mut self.unknown }
-
-    fn tap_scripts(&mut self) -> Option<&mut BTreeMap<ControlBlock, (ScriptBuf, LeafVersion)>> {
-        Some(&mut self.tap_scripts)
-    }
-    fn tap_merkle_root(&mut self) -> Option<&mut Option<taproot::TapNodeHash>> {
-        Some(&mut self.tap_merkle_root)
-    }
 }
 
 impl PsbtFields for psbt::Output {
     fn redeem_script(&mut self) -> &mut Option<ScriptBuf> { &mut self.redeem_script }
-    fn witness_script(&mut self) -> &mut Option<ScriptBuf> { &mut self.witness_script }
     fn bip32_derivation(&mut self) -> &mut BTreeMap<secp256k1::PublicKey, bip32::KeySource> {
         &mut self.bip32_derivation
-    }
-    fn tap_internal_key(&mut self) -> &mut Option<tapyrus::key::XOnlyPublicKey> {
-        &mut self.tap_internal_key
-    }
-    fn tap_key_origins(
-        &mut self,
-    ) -> &mut BTreeMap<tapyrus::key::XOnlyPublicKey, (Vec<TapLeafHash>, bip32::KeySource)> {
-        &mut self.tap_key_origins
     }
     fn proprietary(&mut self) -> &mut BTreeMap<psbt::raw::ProprietaryKey, Vec<u8>> {
         &mut self.proprietary
     }
     fn unknown(&mut self) -> &mut BTreeMap<psbt::raw::Key, Vec<u8>> { &mut self.unknown }
-
-    fn tap_tree(&mut self) -> Option<&mut Option<taproot::TapTree>> { Some(&mut self.tap_tree) }
 }
 
 fn update_item_with_descriptor_helper<F: PsbtFields>(
@@ -1067,102 +1023,7 @@ fn update_item_with_descriptor_helper<F: PsbtFields>(
     // One needs the derived descriptor and the other needs to know whether the script_pubkey check
     // failed.
 ) -> Result<(Descriptor<tapyrus::PublicKey>, bool), descriptor::ConversionError> {
-    let secp = secp256k1::Secp256k1::verification_only();
-
-    let derived = if let Descriptor::Tr(_) = &descriptor {
-        let derived = descriptor.derived_descriptor(&secp)?;
-
-        if let Some(check_script) = check_script {
-            if check_script != &derived.script_pubkey() {
-                return Ok((derived, false));
-            }
-        }
-
-        // NOTE: they will both always be Tr
-        if let (Descriptor::Tr(tr_derived), Descriptor::Tr(tr_xpk)) = (&derived, descriptor) {
-            let spend_info = tr_derived.spend_info();
-            let ik_derived = spend_info.internal_key();
-            let ik_xpk = tr_xpk.internal_key();
-            if let Some(merkle_root) = item.tap_merkle_root() {
-                *merkle_root = spend_info.merkle_root();
-            }
-            *item.tap_internal_key() = Some(ik_derived);
-            item.tap_key_origins().insert(
-                ik_derived,
-                (
-                    vec![],
-                    (
-                        ik_xpk.master_fingerprint(),
-                        ik_xpk
-                            .full_derivation_path()
-                            .ok_or(descriptor::ConversionError::MultiKey)?,
-                    ),
-                ),
-            );
-
-            let mut builder = taproot::TaprootBuilder::new();
-
-            for ((_depth_der, ms_derived), (depth, ms)) in
-                tr_derived.iter_scripts().zip(tr_xpk.iter_scripts())
-            {
-                debug_assert_eq!(_depth_der, depth);
-                let leaf_script = (ms_derived.encode(), LeafVersion::TapScript);
-                let tapleaf_hash = TapLeafHash::from_script(&leaf_script.0, leaf_script.1);
-                builder = builder
-                    .add_leaf(depth, leaf_script.0.clone())
-                    .expect("Computing spend data on a valid tree should always succeed");
-                if let Some(tap_scripts) = item.tap_scripts() {
-                    let control_block = spend_info
-                        .control_block(&leaf_script)
-                        .expect("Control block must exist in script map for every known leaf");
-                    tap_scripts.insert(control_block, leaf_script);
-                }
-
-                for (pk_pkh_derived, pk_pkh_xpk) in ms_derived.iter_pk().zip(ms.iter_pk()) {
-                    let (xonly, xpk) = (pk_pkh_derived.to_x_only_pubkey(), pk_pkh_xpk);
-
-                    let xpk_full_derivation_path = xpk
-                        .full_derivation_path()
-                        .ok_or(descriptor::ConversionError::MultiKey)?;
-                    item.tap_key_origins()
-                        .entry(xonly)
-                        .and_modify(|(tapleaf_hashes, _)| {
-                            if tapleaf_hashes.last() != Some(&tapleaf_hash) {
-                                tapleaf_hashes.push(tapleaf_hash);
-                            }
-                        })
-                        .or_insert_with(|| {
-                            (
-                                vec![tapleaf_hash],
-                                (xpk.master_fingerprint(), xpk_full_derivation_path),
-                            )
-                        });
-                }
-            }
-
-            // Ensure there are no duplicated leaf hashes. This can happen if some of them were
-            // already present in the map when this function is called, since this only appends new
-            // data to the psbt without checking what's already present.
-            for (tapleaf_hashes, _) in item.tap_key_origins().values_mut() {
-                tapleaf_hashes.sort();
-                tapleaf_hashes.dedup();
-            }
-
-            match item.tap_tree() {
-                // Only set the tap_tree if the item supports it (it's an output) and the descriptor actually
-                // contains one, otherwise it'll just be empty
-                Some(tap_tree) if tr_derived.tap_tree().is_some() => {
-                    *tap_tree = Some(
-                        taproot::TapTree::try_from(builder)
-                            .expect("The tree should always be valid"),
-                    );
-                }
-                _ => {}
-            }
-        }
-
-        derived
-    } else {
+    let derived =  {
         let mut bip32_derivation = KeySourceLookUp(BTreeMap::new(), Secp256k1::verification_only());
         let derived = descriptor
             .translate_pk(&mut bip32_derivation)
@@ -1183,7 +1044,6 @@ fn update_item_with_descriptor_helper<F: PsbtFields>(
                     *item.redeem_script() = Some(sh.inner_script())
                 }
             },
-              Descriptor::Tr(_) => unreachable!("Tr is dealt with separately"),
         }
 
         derived

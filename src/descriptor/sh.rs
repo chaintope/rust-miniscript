@@ -263,7 +263,6 @@ impl<Pk: MiniscriptKey + ToPublicKey> Sh<Pk> {
     where
         S: Satisfier<Pk>,
     {
-        let script_sig = self.unsigned_script_sig();
         match self.inner {
             ShInner::SortedMulti(ref smv) => {
                 let mut script_witness = smv.satisfy(satisfier)?;
@@ -289,7 +288,6 @@ impl<Pk: MiniscriptKey + ToPublicKey> Sh<Pk> {
     where
         S: Satisfier<Pk>,
     {
-        let script_sig = self.unsigned_script_sig();
         match self.inner {
             ShInner::Ms(ref ms) => {
                 let mut script_witness = ms.satisfy_malleable(satisfier)?;

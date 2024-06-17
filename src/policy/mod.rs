@@ -170,7 +170,6 @@ impl<Pk: MiniscriptKey> Liftable<Pk> for Descriptor<Pk> {
             Descriptor::Bare(ref bare) => bare.lift(),
             Descriptor::Pkh(ref pkh) => pkh.lift(),
             Descriptor::Sh(ref sh) => sh.lift(),
-            Descriptor::Tr(ref tr) => tr.lift(),
         }
     }
 }
