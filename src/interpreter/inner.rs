@@ -679,7 +679,7 @@ mod tests {
         assert_eq!(script_code, Some(comp.pkh_spk.clone()));
     }
 
-    fn ms_inner_script(ms: &str) -> (Miniscript<tapyrusKey, NoChecks>, tapyrus::ScriptBuf) {
+    fn ms_inner_script(ms: &str) -> (Miniscript<BitcoinKey, NoChecks>, tapyrus::ScriptBuf) {
         let ms = Miniscript::<tapyrus::PublicKey, Segwitv0>::from_str_ext(ms, &ExtParams::insane())
             .unwrap();
         let spk = ms.encode();

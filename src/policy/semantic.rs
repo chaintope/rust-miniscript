@@ -669,8 +669,8 @@ mod tests {
     fn semantic_analysis() {
         let policy = StringPolicy::from_str("pk()").unwrap();
         assert_eq!(policy, Policy::Key("".to_owned()));
-        assert_eq!(policy.relative_timelocks(), vec![]);
-        assert_eq!(policy.absolute_timelocks(), vec![]);
+        assert_eq!(policy.relative_timelocks(), vec![0u32; 0]);
+        assert_eq!(policy.absolute_timelocks(), vec![0u32; 0]);
         assert_eq!(policy.clone().at_age(Sequence::ZERO), policy);
         assert_eq!(policy.clone().at_age(Sequence::from_height(10000)), policy);
         assert_eq!(policy.n_keys(), 1);
@@ -678,8 +678,8 @@ mod tests {
 
         let policy = StringPolicy::from_str("older(1000)").unwrap();
         assert_eq!(policy, Policy::Older(Sequence::from_height(1000)));
-        assert_eq!(policy.absolute_timelocks(), vec![]);
-        assert_eq!(policy.relative_timelocks(), vec![1000]);
+        assert_eq!(policy.absolute_timelocks(), vec![0u32; 0]);
+        assert_eq!(policy.relative_timelocks(), vec![1000u32]);
         assert_eq!(policy.clone().at_age(Sequence::ZERO), Policy::Unsatisfiable);
         assert_eq!(policy.clone().at_age(Sequence::from_height(999)), Policy::Unsatisfiable);
         assert_eq!(policy.clone().at_age(Sequence::from_height(1000)), policy);
@@ -698,8 +698,8 @@ mod tests {
                 ]
             )
         );
-        assert_eq!(policy.relative_timelocks(), vec![1000]);
-        assert_eq!(policy.absolute_timelocks(), vec![]);
+        assert_eq!(policy.relative_timelocks(), vec![1000u32]);
+        assert_eq!(policy.absolute_timelocks(), vec![0u32; 0]);
         assert_eq!(policy.clone().at_age(Sequence::ZERO), Policy::Key("".to_owned()));
         assert_eq!(policy.clone().at_age(Sequence::from_height(999)), Policy::Key("".to_owned()));
         assert_eq!(policy.clone().at_age(Sequence::from_height(1000)), policy.clone().normalized());
@@ -715,8 +715,8 @@ mod tests {
             policy,
             Policy::Threshold(1, vec![Policy::Key("".to_owned()), Policy::Unsatisfiable,])
         );
-        assert_eq!(policy.relative_timelocks(), vec![]);
-        assert_eq!(policy.absolute_timelocks(), vec![]);
+        assert_eq!(policy.relative_timelocks(), vec![0u32; 0]);
+        assert_eq!(policy.absolute_timelocks(), vec![0u32; 0]);
         assert_eq!(policy.n_keys(), 1);
         assert_eq!(policy.minimum_n_keys(), Some(1));
 
@@ -725,8 +725,8 @@ mod tests {
             policy,
             Policy::Threshold(2, vec![Policy::Key("".to_owned()), Policy::Unsatisfiable,])
         );
-        assert_eq!(policy.relative_timelocks(), vec![]);
-        assert_eq!(policy.absolute_timelocks(), vec![]);
+        assert_eq!(policy.relative_timelocks(), vec![0u32; 0]);
+        assert_eq!(policy.absolute_timelocks(), vec![0u32; 0]);
         assert_eq!(policy.n_keys(), 1);
         assert_eq!(policy.minimum_n_keys(), None);
 
@@ -783,8 +783,8 @@ mod tests {
         // Block height 1000.
         let policy = StringPolicy::from_str("after(1000)").unwrap();
         assert_eq!(policy, Policy::after(1000));
-        assert_eq!(policy.absolute_timelocks(), vec![1000]);
-        assert_eq!(policy.relative_timelocks(), vec![]);
+        assert_eq!(policy.absolute_timelocks(), vec![1000u32]);
+        assert_eq!(policy.relative_timelocks(), vec![0u32; 0]);
         assert_eq!(policy.clone().at_lock_time(absolute::LockTime::ZERO), Policy::Unsatisfiable);
         assert_eq!(
             policy
@@ -817,8 +817,8 @@ mod tests {
         // UNIX timestamp of 10 seconds after the epoch.
         let policy = StringPolicy::from_str("after(500000010)").unwrap();
         assert_eq!(policy, Policy::after(500_000_010));
-        assert_eq!(policy.absolute_timelocks(), vec![500_000_010]);
-        assert_eq!(policy.relative_timelocks(), vec![]);
+        assert_eq!(policy.absolute_timelocks(), vec![500_000_010u32]);
+        assert_eq!(policy.relative_timelocks(), vec![0u32; 0]);
         // Pass a block height to at_lock_time while policy uses a UNIX timestapm.
         assert_eq!(policy.clone().at_lock_time(absolute::LockTime::ZERO), Policy::Unsatisfiable);
         assert_eq!(

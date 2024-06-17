@@ -859,8 +859,6 @@ mod tests {
     #[test]
     fn desc_rtt_tests() {
         roundtrip_descriptor("c:pk_k()");
-        roundtrip_descriptor("wsh(pk())");
-        roundtrip_descriptor("wsh(c:pk_k())");
         roundtrip_descriptor("c:pk_h()");
     }
     #[test]
@@ -893,10 +891,6 @@ mod tests {
         StdDescriptor::from_str(&format!("pk({})", uncompressed_pk)).unwrap();
         StdDescriptor::from_str(&format!("pkh({})", uncompressed_pk)).unwrap();
         StdDescriptor::from_str(&format!("sh(pk({}))", uncompressed_pk)).unwrap();
-        StdDescriptor::from_str(&format!("wpkh({})", uncompressed_pk)).unwrap_err();
-        StdDescriptor::from_str(&format!("sh(wpkh({}))", uncompressed_pk)).unwrap_err();
-        StdDescriptor::from_str(&format!("wsh(pk{})", uncompressed_pk)).unwrap_err();
-        StdDescriptor::from_str(&format!("sh(wsh(pk{}))", uncompressed_pk)).unwrap_err();
         StdDescriptor::from_str(&format!("or_i(pk({}),pk({}))", uncompressed_pk, uncompressed_pk))
             .unwrap_err();
     }
@@ -951,51 +945,6 @@ mod tests {
         assert_eq!(
             pkh.address(Network::Prod,).unwrap().to_string(),
             "1D7nRvrRgzCg9kYBwhPH3j3Gs6SmsRg3Wq"
-        );
-
-        let wpkh = StdDescriptor::from_str(
-            "wpkh(\
-             020000000000000000000000000000000000000000000000000000000000000002\
-             )",
-        )
-        .unwrap();
-        assert_eq!(
-            wpkh.script_pubkey(),
-            script::Builder::new()
-                .push_opcode(opcodes::all::OP_PUSHBYTES_0)
-                .push_slice(
-                    &hash160::Hash::from_str("84e9ed95a38613f0527ff685a9928abe2d4754d4",)
-                        .unwrap()
-                        .to_byte_array()
-                )
-                .into_script()
-        );
-        assert_eq!(
-            wpkh.address(Network::Prod,).unwrap().to_string(),
-            "bc1qsn57m9drscflq5nl76z6ny52hck5w4x5wqd9yt"
-        );
-
-        let shwpkh = StdDescriptor::from_str(
-            "sh(wpkh(\
-             020000000000000000000000000000000000000000000000000000000000000002\
-             ))",
-        )
-        .unwrap();
-        assert_eq!(
-            shwpkh.script_pubkey(),
-            script::Builder::new()
-                .push_opcode(opcodes::all::OP_HASH160)
-                .push_slice(
-                    &hash160::Hash::from_str("f1c3b9a431134cb90a500ec06e0067cfa9b8bba7",)
-                        .unwrap()
-                        .to_byte_array()
-                )
-                .push_opcode(opcodes::all::OP_EQUAL)
-                .into_script()
-        );
-        assert_eq!(
-            shwpkh.address(Network::Prod,).unwrap().to_string(),
-            "3PjMEzoveVbvajcnDDuxcJhsuqPHgydQXq"
         );
 
         let sh = StdDescriptor::from_str(
@@ -1146,47 +1095,6 @@ mod tests {
         );
         assert_eq!(pkh.unsigned_script_sig(), tapyrus::ScriptBuf::new());
 
-        let wpkh = Descriptor::new_wpkh(pk).unwrap();
-        wpkh.satisfy(&mut txin, &satisfier).expect("satisfaction");
-        assert_eq!(
-            txin,
-            tapyrus::TxIn {
-                previous_output: tapyrus::OutPoint::default(),
-                script_sig: tapyrus::ScriptBuf::new(),
-                sequence: Sequence::from_height(100),
-                witness: Witness::from_slice(&vec![sigser.clone(), pk.to_bytes(),]),
-            }
-        );
-        assert_eq!(wpkh.unsigned_script_sig(), tapyrus::ScriptBuf::new());
-
-        let shwpkh = Descriptor::new_sh_wpkh(pk).unwrap();
-        shwpkh.satisfy(&mut txin, &satisfier).expect("satisfaction");
-        let redeem_script = script::Builder::new()
-            .push_opcode(opcodes::all::OP_PUSHBYTES_0)
-            .push_slice(
-                &hash160::Hash::from_str("d1b2a1faf62e73460af885c687dee3b7189cd8ab")
-                    .unwrap()
-                    .to_byte_array(),
-            )
-            .into_script();
-        assert_eq!(
-            txin,
-            tapyrus::TxIn {
-                previous_output: tapyrus::OutPoint::default(),
-                script_sig: script::Builder::new()
-                    .push_slice(<&PushBytes>::try_from(redeem_script.as_bytes()).unwrap())
-                    .into_script(),
-                sequence: Sequence::from_height(100),
-                witness: Witness::from_slice(&vec![sigser.clone(), pk.to_bytes(),]),
-            }
-        );
-        assert_eq!(
-            shwpkh.unsigned_script_sig(),
-            script::Builder::new()
-                .push_slice(<&PushBytes>::try_from(redeem_script.as_bytes()).unwrap())
-                .into_script()
-        );
-
         let ms = ms_str!("c:pk_k({})", pk);
         let sh = Descriptor::new_sh(ms.clone()).unwrap();
         sh.satisfy(&mut txin, &satisfier).expect("satisfaction");
@@ -1203,41 +1111,6 @@ mod tests {
             }
         );
         assert_eq!(sh.unsigned_script_sig(), tapyrus::ScriptBuf::new());
-
-        let ms = ms_str!("c:pk_k({})", pk);
-
-        let wsh = Descriptor::new_wsh(ms.clone()).unwrap();
-        wsh.satisfy(&mut txin, &satisfier).expect("satisfaction");
-        assert_eq!(
-            txin,
-            tapyrus::TxIn {
-                previous_output: tapyrus::OutPoint::default(),
-                script_sig: tapyrus::ScriptBuf::new(),
-                sequence: Sequence::from_height(100),
-                witness: Witness::from_slice(&vec![sigser.clone(), ms.encode().into_bytes(),]),
-            }
-        );
-        assert_eq!(wsh.unsigned_script_sig(), tapyrus::ScriptBuf::new());
-
-        let shwsh = Descriptor::new_sh_wsh(ms.clone()).unwrap();
-        shwsh.satisfy(&mut txin, &satisfier).expect("satisfaction");
-        assert_eq!(
-            txin,
-            tapyrus::TxIn {
-                previous_output: tapyrus::OutPoint::default(),
-                script_sig: script::Builder::new()
-                    .push_slice(<&PushBytes>::try_from(ms.encode().to_p2wsh().as_bytes()).unwrap())
-                    .into_script(),
-                sequence: Sequence::from_height(100),
-                witness: Witness::from_slice(&vec![sigser.clone(), ms.encode().into_bytes(),]),
-            }
-        );
-        assert_eq!(
-            shwsh.unsigned_script_sig(),
-            script::Builder::new()
-                .push_slice(<&PushBytes>::try_from(ms.encode().to_p2wsh().as_bytes()).unwrap())
-                .into_script()
-        );
     }
 
     #[test]
