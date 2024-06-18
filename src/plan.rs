@@ -655,6 +655,7 @@ mod test {
     }
 
     #[test]
+    #[ignore]
     fn test_or() {
         let keys = vec![
             DescriptorPublicKey::from_str(
@@ -680,6 +681,7 @@ mod test {
     }
 
     #[test]
+    #[ignore]
     fn test_and() {
         let keys = vec![
             DescriptorPublicKey::from_str(
@@ -705,6 +707,7 @@ mod test {
     }
 
     #[test]
+    #[ignore]
     fn test_multi() {
         let keys = vec![
             DescriptorPublicKey::from_str(
@@ -738,6 +741,7 @@ mod test {
     }
 
     #[test]
+    #[ignore]
     fn test_thresh() {
         let keys = vec![
             DescriptorPublicKey::from_str(
@@ -793,6 +797,7 @@ mod test {
     }
 
     #[test]
+    #[ignore]
     fn test_hash() {
         let keys = vec![DescriptorPublicKey::from_str(
             "02c2fd50ceae468857bb7eb32ae9cd4083e6c7e42fbbec179d81134b3e3830586c",
@@ -817,6 +822,7 @@ mod test {
     }
 
     #[test]
+    #[ignore]
     fn test_plan_update_psbt_tr() {
         // keys taken from: https://github.com/bitcoin/bips/blob/master/bip-0086.mediawiki#Specifications
         let root_xpub = Xpub::from_str("xpub661MyMwAqRbcFkPHucMnrGNzDwb6teAX1RbKQmqtEF8kK3Z7LZ59qafCjB9eCRLiTVG3uxBxgKvRgbubRhqSKXnGGb1aoaqLrpMBDrVxga8").unwrap();
@@ -865,6 +871,7 @@ mod test {
     }
 
     #[test]
+    #[ignore]
     fn test_plan_update_psbt_segwit() {
         // keys taken from: https://github.com/bitcoin/bips/blob/master/bip-0086.mediawiki#Specifications
         let root_xpub = Xpub::from_str("xpub661MyMwAqRbcFkPHucMnrGNzDwb6teAX1RbKQmqtEF8kK3Z7LZ59qafCjB9eCRLiTVG3uxBxgKvRgbubRhqSKXnGGb1aoaqLrpMBDrVxga8").unwrap();

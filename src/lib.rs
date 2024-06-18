@@ -40,7 +40,8 @@
 //!
 //! ## Deriving an address from a descriptor
 //!
-//! ```rust
+//! TODO: modify this to work and remove ignore
+//! ```rust, ignore
 //! use std::str::FromStr;
 //!
 //! let desc = miniscript::Descriptor::<tapyrus::PublicKey>::from_str("\

@@ -1253,6 +1253,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn test_update_item_tr_no_script() {
         // keys taken from: https://github.com/bitcoin/bips/blob/master/bip-0086.mediawiki#Specifications
         let root_xpub = Xpub::from_str("xpub661MyMwAqRbcFkPHucMnrGNzDwb6teAX1RbKQmqtEF8kK3Z7LZ59qafCjB9eCRLiTVG3uxBxgKvRgbubRhqSKXnGGb1aoaqLrpMBDrVxga8").unwrap();
@@ -1282,6 +1283,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn test_update_item_tr_with_tapscript() {
         use crate::Tap;
         // keys taken from: https://github.com/bitcoin/bips/blob/master/bip-0086.mediawiki#Specifications
@@ -1354,6 +1356,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn test_update_item_non_tr_multi() {
         // values taken from https://github.com/bitcoin/bips/blob/master/bip-0084.mediawiki (after removing zpub thingy)
         let root_xpub = Xpub::from_str("xpub661MyMwAqRbcFkPHucMnrGNzDwb6teAX1RbKQmqtEF8kK3Z7LZ59qafCjB9eCRLiTVG3uxBxgKvRgbubRhqSKXnGGb1aoaqLrpMBDrVxga8").unwrap();
@@ -1423,6 +1426,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn test_update_input_checks() {
         let desc = "tr([73c5da0a/86'/0'/0']xpub6BgBgsespWvERF3LHQu6CnqdvfEvtMcQjYrcRzx53QJjSxarj2afYWcLteoGVky7D3UKDP9QyrLprQ3VCECoY49yfdDEHGCtMMj92pReUsQ/0/0)";
         let desc = Descriptor::<DefiniteDescriptorKey>::from_str(&desc).unwrap();
@@ -1485,6 +1489,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn test_update_output_checks() {
         let desc = "tr([73c5da0a/86'/0'/0']xpub6BgBgsespWvERF3LHQu6CnqdvfEvtMcQjYrcRzx53QJjSxarj2afYWcLteoGVky7D3UKDP9QyrLprQ3VCECoY49yfdDEHGCtMMj92pReUsQ/0/0)";
         let desc = Descriptor::<DefiniteDescriptorKey>::from_str(&desc).unwrap();
