@@ -164,9 +164,6 @@ impl error::Error for PolicyError {
 impl<Pk: MiniscriptKey> Policy<Pk> {
     /// Compiles the [`Policy`] into `desc_ctx` [`Descriptor`]
     ///
-    /// In case of [`DescriptorCtx::Tr`], `internal_key` is used for the taproot compilation when
-    /// no public key can be inferred from the given policy.
-    ///
     /// # NOTE:
     ///
     /// It is **not recommended** to use policy as a stable identifier for a miniscript. You should
