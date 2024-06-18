@@ -15,9 +15,9 @@ use core::fmt;
 use core::ops::Range;
 use core::str::{self, FromStr};
 
+use sync::Arc;
 use tapyrus::hashes::{hash160, ripemd160, sha256};
 use tapyrus::{secp256k1, Address, Network, Script, ScriptBuf, TxIn, Witness};
-use sync::Arc;
 
 use self::checksum::verify_checksum;
 use crate::miniscript::decode::Terminal;

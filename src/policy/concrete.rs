@@ -10,11 +10,8 @@ use std::error;
 use tapyrus::{absolute, Sequence};
 #[cfg(feature = "compiler")]
 use {
-    crate::miniscript::ScriptContext,
-    crate::policy::compiler::CompilerError,
-    crate::policy::compiler,
-    crate::Descriptor,
-    crate::Miniscript,
+    crate::miniscript::ScriptContext, crate::policy::compiler,
+    crate::policy::compiler::CompilerError, crate::Descriptor, crate::Miniscript,
 };
 
 use super::ENTAILMENT_MAX_TERMINALS;
@@ -204,9 +201,7 @@ impl<Pk: MiniscriptKey> Policy<Pk> {
 }
 
 #[cfg(feature = "compiler")]
-impl<Pk: MiniscriptKey> Policy<Pk> {
-
-}
+impl<Pk: MiniscriptKey> Policy<Pk> {}
 
 impl<Pk: MiniscriptKey> ForEachKey<Pk> for Policy<Pk> {
     fn for_each_key<'a, F: FnMut(&'a Pk) -> bool>(&'a self, mut pred: F) -> bool {

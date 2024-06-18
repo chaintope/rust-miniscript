@@ -10,9 +10,9 @@
 use core::fmt;
 use core::str::FromStr;
 
+use sync::Arc;
 use tapyrus::hashes::{hash160, Hash};
 use tapyrus::{absolute, opcodes, script, Sequence};
-use sync::Arc;
 
 use crate::miniscript::context::SigType;
 use crate::miniscript::types::{self, Property};

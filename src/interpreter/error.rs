@@ -5,9 +5,9 @@ use core::fmt;
 #[cfg(feature = "std")]
 use std::error;
 
+use internals::hex::display::DisplayHex;
 use tapyrus::hashes::hash160;
 use tapyrus::{secp256k1, taproot};
-use internals::hex::display::DisplayHex;
 
 use super::BitcoinKey;
 use crate::prelude::*;

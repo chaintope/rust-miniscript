@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: CC0-1.0
 
+use miniscript::psbt::PsbtExt;
 use tapyrus::consensus::encode::deserialize;
 use tapyrus::hashes::hex::FromHex;
 use tapyrus::psbt::Psbt;
-use miniscript::psbt::PsbtExt;
 
 fn main() {
     // Test vectors from BIP 174

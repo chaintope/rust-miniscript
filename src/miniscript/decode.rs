@@ -10,9 +10,9 @@ use core::marker::PhantomData;
 #[cfg(feature = "std")]
 use std::error;
 
+use sync::Arc;
 use tapyrus::hashes::{hash160, ripemd160, sha256, Hash};
 use tapyrus::{Sequence, Weight};
-use sync::Arc;
 
 use crate::miniscript::lex::{Token as Tk, TokenIter};
 use crate::miniscript::limits::MAX_PUBKEYS_PER_MULTISIG;

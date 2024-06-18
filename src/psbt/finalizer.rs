@@ -21,8 +21,8 @@ use super::{sanity_check, Error, InputError, Psbt, PsbtInputSatisfier};
 use crate::prelude::*;
 use crate::util::witness_size;
 use crate::{
-    interpreter, BareCtx, Descriptor, ExtParams, Legacy, Miniscript, Satisfier, SigType,
-    Tap, ToPublicKey,
+    interpreter, BareCtx, Descriptor, ExtParams, Legacy, Miniscript, Satisfier, SigType, Tap,
+    ToPublicKey,
 };
 
 // Satisfy the taproot descriptor. It is not possible to infer the complete

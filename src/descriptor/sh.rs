@@ -22,8 +22,8 @@ use crate::policy::{semantic, Liftable};
 use crate::prelude::*;
 use crate::util::{varint_len, witness_to_scriptsig};
 use crate::{
-    push_opcode_size, Error, ForEachKey, Legacy, Miniscript, MiniscriptKey, Satisfier,
-    ToPublicKey, TranslateErr, TranslatePk, Translator,
+    push_opcode_size, Error, ForEachKey, Legacy, Miniscript, MiniscriptKey, Satisfier, ToPublicKey,
+    TranslateErr, TranslatePk, Translator,
 };
 
 /// A Legacy p2sh Descriptor

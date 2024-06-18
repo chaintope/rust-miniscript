@@ -752,7 +752,7 @@ impl PsbtExt for Psbt {
                     .clone(),
                 (Some(_), _) => {
                     // This should not happen as tapyrus does not support segwit.
-                    return Err(UtxoUpdateError::UtxoCheck)
+                    return Err(UtxoUpdateError::UtxoCheck);
                 }
                 (None, None) => return Err(UtxoUpdateError::UtxoCheck),
             }
@@ -1023,7 +1023,7 @@ fn update_item_with_descriptor_helper<F: PsbtFields>(
     // One needs the derived descriptor and the other needs to know whether the script_pubkey check
     // failed.
 ) -> Result<(Descriptor<tapyrus::PublicKey>, bool), descriptor::ConversionError> {
-    let derived =  {
+    let derived = {
         let mut bip32_derivation = KeySourceLookUp(BTreeMap::new(), Secp256k1::verification_only());
         let derived = descriptor
             .translate_pk(&mut bip32_derivation)
@@ -1038,7 +1038,7 @@ fn update_item_with_descriptor_helper<F: PsbtFields>(
         item.bip32_derivation().append(&mut bip32_derivation.0);
 
         match &derived {
-            Descriptor::Bare(_) | Descriptor::Pkh(_)  => {}
+            Descriptor::Bare(_) | Descriptor::Pkh(_) => {}
             Descriptor::Sh(sh) => match sh.as_inner() {
                 descriptor::ShInner::SortedMulti(_) | descriptor::ShInner::Ms(_) => {
                     *item.redeem_script() = Some(sh.inner_script())

@@ -600,11 +600,11 @@ mod tests {
     use core::str;
     use core::str::FromStr;
 
+    use sync::Arc;
     use tapyrus::hashes::{hash160, sha256, Hash};
     use tapyrus::secp256k1::XOnlyPublicKey;
     use tapyrus::taproot::TapLeafHash;
     use tapyrus::{self, secp256k1, Sequence};
-    use sync::Arc;
 
     use super::{Miniscript, ScriptContext, Segwitv0, Tap};
     use crate::miniscript::types::{self, ExtData, Property, Type};

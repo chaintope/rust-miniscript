@@ -8,11 +8,11 @@
 
 use core::{cmp, fmt, i64, mem};
 
+use sync::Arc;
 use tapyrus::hashes::hash160;
 use tapyrus::key::XOnlyPublicKey;
 use tapyrus::taproot::{ControlBlock, LeafVersion, TapLeafHash, TapNodeHash};
 use tapyrus::{absolute, ScriptBuf, Sequence};
-use sync::Arc;
 
 use super::context::SigType;
 use crate::plan::AssetProvider;

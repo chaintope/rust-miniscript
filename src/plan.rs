@@ -239,9 +239,7 @@ impl Plan {
     pub fn satisfaction_weight(&self) -> usize { self.scriptsig_size() * 4 }
 
     /// The size in bytes of the script sig that satisfies this plan
-    pub fn scriptsig_size(&self) -> usize {
-        witness_size(self.template.as_ref())
-    }
+    pub fn scriptsig_size(&self) -> usize { witness_size(self.template.as_ref()) }
 
     /// Try creating the final script_sig and witness using a [`Satisfier`]
     pub fn satisfy<Sat: Satisfier<DefiniteDescriptorKey>>(

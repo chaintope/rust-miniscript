@@ -1142,9 +1142,9 @@ impl Serialize for DescriptorPublicKey {
 mod test {
     use core::str::FromStr;
 
-    use tapyrus::{bip32, secp256k1};
     #[cfg(feature = "serde")]
     use serde_test::{assert_tokens, Token};
+    use tapyrus::{bip32, secp256k1};
 
     use super::{
         DescriptorKeyParseError, DescriptorMultiXKey, DescriptorPublicKey, DescriptorSecretKey,
