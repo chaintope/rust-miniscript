@@ -830,7 +830,7 @@ mod tests {
     use tapyrus::blockdata::script::Instruction;
     use tapyrus::blockdata::{opcodes, script};
     use tapyrus::hashes::hex::FromHex;
-    use tapyrus::hashes::{hash160, sha256, Hash};
+    use tapyrus::hashes::{hash160, Hash};
     use tapyrus::script::PushBytes;
     use tapyrus::sighash::EcdsaSighashType;
     use tapyrus::{self, bip32, secp256k1, PublicKey, Sequence};
@@ -969,56 +969,6 @@ mod tests {
             sh.address(Network::Prod,).unwrap().to_string(),
             "3HDbdvM9CQ6ASnQFUkWw6Z4t3qNwMesJE9"
         );
-
-        let wsh = StdDescriptor::from_str(
-            "wsh(c:pk_k(\
-             020000000000000000000000000000000000000000000000000000000000000002\
-             ))",
-        )
-        .unwrap();
-        assert_eq!(
-            wsh.script_pubkey(),
-            script::Builder::new()
-                .push_opcode(opcodes::all::OP_PUSHBYTES_0)
-                .push_slice(
-                    &sha256::Hash::from_str(
-                        "\
-                         f9379edc8983152dc781747830075bd5\
-                         3896e4b0ce5bff73777fd77d124ba085\
-                         "
-                    )
-                    .unwrap()
-                    .to_byte_array()
-                )
-                .into_script()
-        );
-        assert_eq!(
-            wsh.address(Network::Prod,).unwrap().to_string(),
-            "bc1qlymeahyfsv2jm3upw3urqp6m65ufde9seedl7umh0lth6yjt5zzsk33tv6"
-        );
-
-        let shwsh = StdDescriptor::from_str(
-            "sh(wsh(c:pk_k(\
-             020000000000000000000000000000000000000000000000000000000000000002\
-             )))",
-        )
-        .unwrap();
-        assert_eq!(
-            shwsh.script_pubkey(),
-            script::Builder::new()
-                .push_opcode(opcodes::all::OP_HASH160)
-                .push_slice(
-                    &hash160::Hash::from_str("4bec5d7feeed99e1d0a23fe32a4afe126a7ff07e",)
-                        .unwrap()
-                        .to_byte_array()
-                )
-                .push_opcode(opcodes::all::OP_EQUAL)
-                .into_script()
-        );
-        assert_eq!(
-            shwsh.address(Network::Prod,).unwrap().to_string(),
-            "38cTksiyPT2b1uGRVbVqHdDhW9vKs84N6Z"
-        );
     }
 
     #[test]
@@ -1115,7 +1065,7 @@ mod tests {
 
     #[test]
     fn after_is_cltv() {
-        let descriptor = Descriptor::<tapyrus::PublicKey>::from_str("wsh(after(1000))").unwrap();
+        let descriptor = Descriptor::<tapyrus::PublicKey>::from_str("sh(after(1000))").unwrap();
         let script = descriptor.explicit_script().unwrap();
 
         let actual_instructions: Vec<_> = script.instructions().collect();
@@ -1126,7 +1076,7 @@ mod tests {
 
     #[test]
     fn older_is_csv() {
-        let descriptor = Descriptor::<tapyrus::PublicKey>::from_str("wsh(older(1000))").unwrap();
+        let descriptor = Descriptor::<tapyrus::PublicKey>::from_str("sh(older(1000))").unwrap();
         let script = descriptor.explicit_script().unwrap();
 
         let actual_instructions: Vec<_> = script.instructions().collect();
@@ -1211,9 +1161,9 @@ mod tests {
 
     #[test]
     fn test_scriptcode() {
-        // P2WPKH (from bip143 test vectors)
+        // P2PKH (from bip143 test vectors)
         let descriptor = Descriptor::<PublicKey>::from_str(
-            "wpkh(025476c2e83188368da1ff3e292e7acafcdb3566bb0ad253f62fc70f07aeee6357)",
+            "pkh(025476c2e83188368da1ff3e292e7acafcdb3566bb0ad253f62fc70f07aeee6357)",
         )
         .unwrap();
         assert_eq!(
@@ -1221,9 +1171,9 @@ mod tests {
             Vec::<u8>::from_hex("76a9141d0f172a0ecb48aee1be1f2687d2963ae33f71a188ac").unwrap()[..]
         );
 
-        // P2SH-P2WPKH (from bip143 test vectors)
+        // P2SH-P2PKH (from bip143 test vectors)
         let descriptor = Descriptor::<PublicKey>::from_str(
-            "sh(wpkh(03ad1d8e89212f0b92c74d23bb710c00662ad1470198ac48c43f7d6f93a2a26873))",
+            "sh(pkh(03ad1d8e89212f0b92c74d23bb710c00662ad1470198ac48c43f7d6f93a2a26873))",
         )
         .unwrap();
         assert_eq!(
@@ -1231,9 +1181,9 @@ mod tests {
             Vec::<u8>::from_hex("76a91479091972186c449eb1ded22b78e40d009bdf008988ac").unwrap()[..]
         );
 
-        // P2WSH (from bitcoind's `createmultisig`)
+        // P2SH (from bitcoind's `createmultisig`)
         let descriptor = Descriptor::<PublicKey>::from_str(
-            "wsh(multi(2,03789ed0bb717d88f7d321a368d905e7430207ebbd82bd342cf11ae157a7ace5fd,03dbc6764b8884a92e871274b87583e6d5c2a58819473e17e107ef3f6aa5a61626))",
+            "sh(multi(2,03789ed0bb717d88f7d321a368d905e7430207ebbd82bd342cf11ae157a7ace5fd,03dbc6764b8884a92e871274b87583e6d5c2a58819473e17e107ef3f6aa5a61626))",
         )
         .unwrap();
         assert_eq!(
@@ -1243,8 +1193,8 @@ mod tests {
             Vec::<u8>::from_hex("522103789ed0bb717d88f7d321a368d905e7430207ebbd82bd342cf11ae157a7ace5fd2103dbc6764b8884a92e871274b87583e6d5c2a58819473e17e107ef3f6aa5a6162652ae").unwrap()[..]
         );
 
-        // P2SH-P2WSH (from bitcoind's `createmultisig`)
-        let descriptor = Descriptor::<PublicKey>::from_str("sh(wsh(multi(2,03789ed0bb717d88f7d321a368d905e7430207ebbd82bd342cf11ae157a7ace5fd,03dbc6764b8884a92e871274b87583e6d5c2a58819473e17e107ef3f6aa5a61626)))").unwrap();
+        // P2SH (from bitcoind's `createmultisig`)
+        let descriptor = Descriptor::<PublicKey>::from_str("sh(multi(2,03789ed0bb717d88f7d321a368d905e7430207ebbd82bd342cf11ae157a7ace5fd,03dbc6764b8884a92e871274b87583e6d5c2a58819473e17e107ef3f6aa5a61626))").unwrap();
         assert_eq!(
             *descriptor
                 .script_code().unwrap()
@@ -1478,11 +1428,11 @@ pk(03f28773c2d975288bc7d1d205c3748651b075fbc6610e58cddeeddf8f19405aa8))";
     #[test]
     fn parse_with_secrets() {
         let secp = &secp256k1::Secp256k1::signing_only();
-        let descriptor_str = "wpkh(xprv9s21ZrQH143K4CTb63EaMxja1YiTnSEWKMbn23uoEnAzxjdUJRQkazCAtzxGm4LSoTSVTptoV9RbchnKPW9HxKtZumdyxyikZFDLhogJ5Uj/44'/0'/0'/0/*)#v20xlvm9";
+        let descriptor_str = "pkh(xprv9s21ZrQH143K4CTb63EaMxja1YiTnSEWKMbn23uoEnAzxjdUJRQkazCAtzxGm4LSoTSVTptoV9RbchnKPW9HxKtZumdyxyikZFDLhogJ5Uj/44'/0'/0'/0/*)#ue30pxal";
         let (descriptor, keymap) =
             Descriptor::<DescriptorPublicKey>::parse_descriptor(secp, descriptor_str).unwrap();
 
-        let expected = "wpkh([a12b02f4/44'/0'/0']xpub6BzhLAQUDcBUfHRQHZxDF2AbcJqp4Kaeq6bzJpXrjrWuK26ymTFwkEFbxPra2bJ7yeZKbDjfDeFwxe93JMqpo5SsPJH6dZdvV9kMzJkAZ69/0/*)#u37l7u8u";
+        let expected = "pkh([a12b02f4/44'/0'/0']xpub6BzhLAQUDcBUfHRQHZxDF2AbcJqp4Kaeq6bzJpXrjrWuK26ymTFwkEFbxPra2bJ7yeZKbDjfDeFwxe93JMqpo5SsPJH6dZdvV9kMzJkAZ69/0/*)#fadq2wl3";
         assert_eq!(expected, descriptor.to_string());
         assert_eq!(keymap.len(), 1);
 
@@ -1492,13 +1442,13 @@ pk(03f28773c2d975288bc7d1d205c3748651b075fbc6610e58cddeeddf8f19405aa8))";
 
     #[test]
     fn checksum_for_nested_sh() {
-        let descriptor_str = "sh(wpkh(xpub6ERApfZwUNrhLCkDtcHTcxd75RbzS1ed54G1LkBUHQVHQKqhMkhgbmJbZRkrgZw4koxb5JaHWkY4ALHY2grBGRjaDMzQLcgJvLJuZZvRcEL))";
+        let descriptor_str = "sh(pkh(xpub6ERApfZwUNrhLCkDtcHTcxd75RbzS1ed54G1LkBUHQVHQKqhMkhgbmJbZRkrgZw4koxb5JaHWkY4ALHY2grBGRjaDMzQLcgJvLJuZZvRcEL))";
         let descriptor: Descriptor<DescriptorPublicKey> = descriptor_str.parse().unwrap();
-        assert_eq!(descriptor.to_string(), "sh(wpkh(xpub6ERApfZwUNrhLCkDtcHTcxd75RbzS1ed54G1LkBUHQVHQKqhMkhgbmJbZRkrgZw4koxb5JaHWkY4ALHY2grBGRjaDMzQLcgJvLJuZZvRcEL))#tjp2zm88");
+        assert_eq!(descriptor.to_string(), "sh(pkh(xpub6ERApfZwUNrhLCkDtcHTcxd75RbzS1ed54G1LkBUHQVHQKqhMkhgbmJbZRkrgZw4koxb5JaHWkY4ALHY2grBGRjaDMzQLcgJvLJuZZvRcEL))#4hknq4mx");
 
-        let descriptor_str = "sh(wsh(pk(xpub6ERApfZwUNrhLCkDtcHTcxd75RbzS1ed54G1LkBUHQVHQKqhMkhgbmJbZRkrgZw4koxb5JaHWkY4ALHY2grBGRjaDMzQLcgJvLJuZZvRcEL)))";
+        let descriptor_str = "sh(pk(xpub6ERApfZwUNrhLCkDtcHTcxd75RbzS1ed54G1LkBUHQVHQKqhMkhgbmJbZRkrgZw4koxb5JaHWkY4ALHY2grBGRjaDMzQLcgJvLJuZZvRcEL))";
         let descriptor: Descriptor<DescriptorPublicKey> = descriptor_str.parse().unwrap();
-        assert_eq!(descriptor.to_string(), "sh(wsh(pk(xpub6ERApfZwUNrhLCkDtcHTcxd75RbzS1ed54G1LkBUHQVHQKqhMkhgbmJbZRkrgZw4koxb5JaHWkY4ALHY2grBGRjaDMzQLcgJvLJuZZvRcEL)))#6c6hwr22");
+        assert_eq!(descriptor.to_string(), "sh(pk(xpub6ERApfZwUNrhLCkDtcHTcxd75RbzS1ed54G1LkBUHQVHQKqhMkhgbmJbZRkrgZw4koxb5JaHWkY4ALHY2grBGRjaDMzQLcgJvLJuZZvRcEL))#cn9wvj0l");
     }
 
     #[test]
@@ -1506,13 +1456,9 @@ pk(03f28773c2d975288bc7d1d205c3748651b075fbc6610e58cddeeddf8f19405aa8))";
         let comp_key = "0308c0fcf8895f4361b4fc77afe2ad53b0bd27dcebfd863421b2b246dc283d4103";
         let x_only_key = "08c0fcf8895f4361b4fc77afe2ad53b0bd27dcebfd863421b2b246dc283d4103";
 
-        // Both x-only keys and comp keys allowed in tr
-        Descriptor::<DescriptorPublicKey>::from_str(&format!("tr({})", comp_key)).unwrap();
-        Descriptor::<DescriptorPublicKey>::from_str(&format!("tr({})", x_only_key)).unwrap();
-
-        // Only compressed keys allowed in wsh
-        Descriptor::<DescriptorPublicKey>::from_str(&format!("wsh(pk({}))", comp_key)).unwrap();
-        Descriptor::<DescriptorPublicKey>::from_str(&format!("wsh(pk({}))", x_only_key))
+        // Only compressed keys allowed in sh
+        Descriptor::<DescriptorPublicKey>::from_str(&format!("sh(pk({}))", comp_key)).unwrap();
+        Descriptor::<DescriptorPublicKey>::from_str(&format!("sh(pk({}))", x_only_key))
             .unwrap_err();
     }
 
@@ -1568,85 +1514,38 @@ pk(03f28773c2d975288bc7d1d205c3748651b075fbc6610e58cddeeddf8f19405aa8))";
             "pkh(020000000000000000000000000000000000000000000000000000000000000002)",
         );
 
-        let wpkh = StdDescriptor::from_str(
-            "wpkh(020000000000000000000000000000000000000000000000000000000000000002)",
-        )
-        .unwrap();
-        assert_eq!(
-            format!("{}", wpkh),
-            "wpkh(020000000000000000000000000000000000000000000000000000000000000002)#d3xz2xye",
-        );
-        assert_eq!(
-            format!("{:#}", wpkh),
-            "wpkh(020000000000000000000000000000000000000000000000000000000000000002)",
-        );
-
-        let shwpkh = StdDescriptor::from_str(
-            "sh(wpkh(020000000000000000000000000000000000000000000000000000000000000002))",
-        )
-        .unwrap();
-        assert_eq!(
-            format!("{}", shwpkh),
-            "sh(wpkh(020000000000000000000000000000000000000000000000000000000000000002))#45zpjtet",
-        );
-        assert_eq!(
-            format!("{:#}", shwpkh),
-            "sh(wpkh(020000000000000000000000000000000000000000000000000000000000000002))",
-        );
-
-        let wsh = StdDescriptor::from_str("wsh(1)").unwrap();
-        assert_eq!(format!("{}", wsh), "wsh(1)#mrg7xj7p");
-        assert_eq!(format!("{:#}", wsh), "wsh(1)");
-
         let sh = StdDescriptor::from_str("sh(1)").unwrap();
         assert_eq!(format!("{}", sh), "sh(1)#l8r75ggs");
         assert_eq!(format!("{:#}", sh), "sh(1)");
-
-        let shwsh = StdDescriptor::from_str("sh(wsh(1))").unwrap();
-        assert_eq!(format!("{}", shwsh), "sh(wsh(1))#hcyfl07f");
-        assert_eq!(format!("{:#}", shwsh), "sh(wsh(1))");
-
-        let tr = StdDescriptor::from_str(
-            "tr(020000000000000000000000000000000000000000000000000000000000000002)",
-        )
-        .unwrap();
-        assert_eq!(
-            format!("{}", tr),
-            "tr(020000000000000000000000000000000000000000000000000000000000000002)#8hc7wq5h",
-        );
-        assert_eq!(
-            format!("{:#}", tr),
-            "tr(020000000000000000000000000000000000000000000000000000000000000002)",
-        );
     }
 
     #[test]
     fn multipath_descriptors() {
         // We can parse a multipath descriptors, and make it into separate single-path descriptors.
-        let desc = Descriptor::from_str("wsh(andor(pk(tpubDEN9WSToTyy9ZQfaYqSKfmVqmq1VVLNtYfj3Vkqh67et57eJ5sTKZQBkHqSwPUsoSskJeaYnPttHe2VrkCsKA27kUaN9SDc5zhqeLzKa1rr/0'/<7';8h;20>/*),older(10000),pk(tpubD8LYfn6njiA2inCoxwM7EuN3cuLVcaHAwLYeups13dpevd3nHLRdK9NdQksWXrhLQVxcUZRpnp5CkJ1FhE61WRAsHxDNAkvGkoQkAeWDYjV/8/4567/<0;1;987>/*)))").unwrap();
+        let desc = Descriptor::from_str("sh(andor(pk(tpubDEN9WSToTyy9ZQfaYqSKfmVqmq1VVLNtYfj3Vkqh67et57eJ5sTKZQBkHqSwPUsoSskJeaYnPttHe2VrkCsKA27kUaN9SDc5zhqeLzKa1rr/0'/<7';8h;20>/*),older(10000),pk(tpubD8LYfn6njiA2inCoxwM7EuN3cuLVcaHAwLYeups13dpevd3nHLRdK9NdQksWXrhLQVxcUZRpnp5CkJ1FhE61WRAsHxDNAkvGkoQkAeWDYjV/8/4567/<0;1;987>/*)))").unwrap();
         assert!(desc.is_multipath());
         assert_eq!(desc.into_single_descriptors().unwrap(), vec![
-            Descriptor::from_str("wsh(andor(pk(tpubDEN9WSToTyy9ZQfaYqSKfmVqmq1VVLNtYfj3Vkqh67et57eJ5sTKZQBkHqSwPUsoSskJeaYnPttHe2VrkCsKA27kUaN9SDc5zhqeLzKa1rr/0'/7'/*),older(10000),pk(tpubD8LYfn6njiA2inCoxwM7EuN3cuLVcaHAwLYeups13dpevd3nHLRdK9NdQksWXrhLQVxcUZRpnp5CkJ1FhE61WRAsHxDNAkvGkoQkAeWDYjV/8/4567/0/*)))").unwrap(),
-            Descriptor::from_str("wsh(andor(pk(tpubDEN9WSToTyy9ZQfaYqSKfmVqmq1VVLNtYfj3Vkqh67et57eJ5sTKZQBkHqSwPUsoSskJeaYnPttHe2VrkCsKA27kUaN9SDc5zhqeLzKa1rr/0'/8h/*),older(10000),pk(tpubD8LYfn6njiA2inCoxwM7EuN3cuLVcaHAwLYeups13dpevd3nHLRdK9NdQksWXrhLQVxcUZRpnp5CkJ1FhE61WRAsHxDNAkvGkoQkAeWDYjV/8/4567/1/*)))").unwrap(),
-            Descriptor::from_str("wsh(andor(pk(tpubDEN9WSToTyy9ZQfaYqSKfmVqmq1VVLNtYfj3Vkqh67et57eJ5sTKZQBkHqSwPUsoSskJeaYnPttHe2VrkCsKA27kUaN9SDc5zhqeLzKa1rr/0'/20/*),older(10000),pk(tpubD8LYfn6njiA2inCoxwM7EuN3cuLVcaHAwLYeups13dpevd3nHLRdK9NdQksWXrhLQVxcUZRpnp5CkJ1FhE61WRAsHxDNAkvGkoQkAeWDYjV/8/4567/987/*)))").unwrap()
+            Descriptor::from_str("sh(andor(pk(tpubDEN9WSToTyy9ZQfaYqSKfmVqmq1VVLNtYfj3Vkqh67et57eJ5sTKZQBkHqSwPUsoSskJeaYnPttHe2VrkCsKA27kUaN9SDc5zhqeLzKa1rr/0'/7'/*),older(10000),pk(tpubD8LYfn6njiA2inCoxwM7EuN3cuLVcaHAwLYeups13dpevd3nHLRdK9NdQksWXrhLQVxcUZRpnp5CkJ1FhE61WRAsHxDNAkvGkoQkAeWDYjV/8/4567/0/*)))").unwrap(),
+            Descriptor::from_str("sh(andor(pk(tpubDEN9WSToTyy9ZQfaYqSKfmVqmq1VVLNtYfj3Vkqh67et57eJ5sTKZQBkHqSwPUsoSskJeaYnPttHe2VrkCsKA27kUaN9SDc5zhqeLzKa1rr/0'/8h/*),older(10000),pk(tpubD8LYfn6njiA2inCoxwM7EuN3cuLVcaHAwLYeups13dpevd3nHLRdK9NdQksWXrhLQVxcUZRpnp5CkJ1FhE61WRAsHxDNAkvGkoQkAeWDYjV/8/4567/1/*)))").unwrap(),
+            Descriptor::from_str("sh(andor(pk(tpubDEN9WSToTyy9ZQfaYqSKfmVqmq1VVLNtYfj3Vkqh67et57eJ5sTKZQBkHqSwPUsoSskJeaYnPttHe2VrkCsKA27kUaN9SDc5zhqeLzKa1rr/0'/20/*),older(10000),pk(tpubD8LYfn6njiA2inCoxwM7EuN3cuLVcaHAwLYeups13dpevd3nHLRdK9NdQksWXrhLQVxcUZRpnp5CkJ1FhE61WRAsHxDNAkvGkoQkAeWDYjV/8/4567/987/*)))").unwrap()
         ]);
 
         // Even if only one of the keys is multipath.
-        let desc = Descriptor::from_str("wsh(andor(pk(tpubDEN9WSToTyy9ZQfaYqSKfmVqmq1VVLNtYfj3Vkqh67et57eJ5sTKZQBkHqSwPUsoSskJeaYnPttHe2VrkCsKA27kUaN9SDc5zhqeLzKa1rr/0'/<0;1>/*),older(10000),pk(tpubD8LYfn6njiA2inCoxwM7EuN3cuLVcaHAwLYeups13dpevd3nHLRdK9NdQksWXrhLQVxcUZRpnp5CkJ1FhE61WRAsHxDNAkvGkoQkAeWDYjV/8/4567/*)))").unwrap();
+        let desc = Descriptor::from_str("sh(andor(pk(tpubDEN9WSToTyy9ZQfaYqSKfmVqmq1VVLNtYfj3Vkqh67et57eJ5sTKZQBkHqSwPUsoSskJeaYnPttHe2VrkCsKA27kUaN9SDc5zhqeLzKa1rr/0'/<0;1>/*),older(10000),pk(tpubD8LYfn6njiA2inCoxwM7EuN3cuLVcaHAwLYeups13dpevd3nHLRdK9NdQksWXrhLQVxcUZRpnp5CkJ1FhE61WRAsHxDNAkvGkoQkAeWDYjV/8/4567/*)))").unwrap();
         assert!(desc.is_multipath());
         assert_eq!(desc.into_single_descriptors().unwrap(), vec![
-            Descriptor::from_str("wsh(andor(pk(tpubDEN9WSToTyy9ZQfaYqSKfmVqmq1VVLNtYfj3Vkqh67et57eJ5sTKZQBkHqSwPUsoSskJeaYnPttHe2VrkCsKA27kUaN9SDc5zhqeLzKa1rr/0'/0/*),older(10000),pk(tpubD8LYfn6njiA2inCoxwM7EuN3cuLVcaHAwLYeups13dpevd3nHLRdK9NdQksWXrhLQVxcUZRpnp5CkJ1FhE61WRAsHxDNAkvGkoQkAeWDYjV/8/4567/*)))").unwrap(),
-            Descriptor::from_str("wsh(andor(pk(tpubDEN9WSToTyy9ZQfaYqSKfmVqmq1VVLNtYfj3Vkqh67et57eJ5sTKZQBkHqSwPUsoSskJeaYnPttHe2VrkCsKA27kUaN9SDc5zhqeLzKa1rr/0'/1/*),older(10000),pk(tpubD8LYfn6njiA2inCoxwM7EuN3cuLVcaHAwLYeups13dpevd3nHLRdK9NdQksWXrhLQVxcUZRpnp5CkJ1FhE61WRAsHxDNAkvGkoQkAeWDYjV/8/4567/*)))").unwrap(),
+            Descriptor::from_str("sh(andor(pk(tpubDEN9WSToTyy9ZQfaYqSKfmVqmq1VVLNtYfj3Vkqh67et57eJ5sTKZQBkHqSwPUsoSskJeaYnPttHe2VrkCsKA27kUaN9SDc5zhqeLzKa1rr/0'/0/*),older(10000),pk(tpubD8LYfn6njiA2inCoxwM7EuN3cuLVcaHAwLYeups13dpevd3nHLRdK9NdQksWXrhLQVxcUZRpnp5CkJ1FhE61WRAsHxDNAkvGkoQkAeWDYjV/8/4567/*)))").unwrap(),
+            Descriptor::from_str("sh(andor(pk(tpubDEN9WSToTyy9ZQfaYqSKfmVqmq1VVLNtYfj3Vkqh67et57eJ5sTKZQBkHqSwPUsoSskJeaYnPttHe2VrkCsKA27kUaN9SDc5zhqeLzKa1rr/0'/1/*),older(10000),pk(tpubD8LYfn6njiA2inCoxwM7EuN3cuLVcaHAwLYeups13dpevd3nHLRdK9NdQksWXrhLQVxcUZRpnp5CkJ1FhE61WRAsHxDNAkvGkoQkAeWDYjV/8/4567/*)))").unwrap(),
         ]);
 
         // We can detect regular single-path descriptors.
-        let notmulti_desc = Descriptor::from_str("wsh(andor(pk(tpubDEN9WSToTyy9ZQfaYqSKfmVqmq1VVLNtYfj3Vkqh67et57eJ5sTKZQBkHqSwPUsoSskJeaYnPttHe2VrkCsKA27kUaN9SDc5zhqeLzKa1rr/0'/*),older(10000),pk(tpubD8LYfn6njiA2inCoxwM7EuN3cuLVcaHAwLYeups13dpevd3nHLRdK9NdQksWXrhLQVxcUZRpnp5CkJ1FhE61WRAsHxDNAkvGkoQkAeWDYjV/8/4567/*)))").unwrap();
+        let notmulti_desc = Descriptor::from_str("sh(andor(pk(tpubDEN9WSToTyy9ZQfaYqSKfmVqmq1VVLNtYfj3Vkqh67et57eJ5sTKZQBkHqSwPUsoSskJeaYnPttHe2VrkCsKA27kUaN9SDc5zhqeLzKa1rr/0'/*),older(10000),pk(tpubD8LYfn6njiA2inCoxwM7EuN3cuLVcaHAwLYeups13dpevd3nHLRdK9NdQksWXrhLQVxcUZRpnp5CkJ1FhE61WRAsHxDNAkvGkoQkAeWDYjV/8/4567/*)))").unwrap();
         assert!(!notmulti_desc.is_multipath());
         assert_eq!(notmulti_desc.clone().into_single_descriptors().unwrap(), vec![notmulti_desc]);
 
         // We refuse to parse multipath descriptors with a mismatch in the number of derivation paths between keys.
-        Descriptor::<DescriptorPublicKey>::from_str("wsh(andor(pk(tpubDEN9WSToTyy9ZQfaYqSKfmVqmq1VVLNtYfj3Vkqh67et57eJ5sTKZQBkHqSwPUsoSskJeaYnPttHe2VrkCsKA27kUaN9SDc5zhqeLzKa1rr/0'/<0;1>/*),older(10000),pk(tpubD8LYfn6njiA2inCoxwM7EuN3cuLVcaHAwLYeups13dpevd3nHLRdK9NdQksWXrhLQVxcUZRpnp5CkJ1FhE61WRAsHxDNAkvGkoQkAeWDYjV/8/<0;1;2;3;4>/*)))").unwrap_err();
-        Descriptor::<DescriptorPublicKey>::from_str("wsh(andor(pk(tpubDEN9WSToTyy9ZQfaYqSKfmVqmq1VVLNtYfj3Vkqh67et57eJ5sTKZQBkHqSwPUsoSskJeaYnPttHe2VrkCsKA27kUaN9SDc5zhqeLzKa1rr/0'/<0;1;2;3>/*),older(10000),pk(tpubD8LYfn6njiA2inCoxwM7EuN3cuLVcaHAwLYeups13dpevd3nHLRdK9NdQksWXrhLQVxcUZRpnp5CkJ1FhE61WRAsHxDNAkvGkoQkAeWDYjV/8/<0;1;2>/*)))").unwrap_err();
+        Descriptor::<DescriptorPublicKey>::from_str("sh(andor(pk(tpubDEN9WSToTyy9ZQfaYqSKfmVqmq1VVLNtYfj3Vkqh67et57eJ5sTKZQBkHqSwPUsoSskJeaYnPttHe2VrkCsKA27kUaN9SDc5zhqeLzKa1rr/0'/<0;1>/*),older(10000),pk(tpubD8LYfn6njiA2inCoxwM7EuN3cuLVcaHAwLYeups13dpevd3nHLRdK9NdQksWXrhLQVxcUZRpnp5CkJ1FhE61WRAsHxDNAkvGkoQkAeWDYjV/8/<0;1;2;3;4>/*)))").unwrap_err();
+        Descriptor::<DescriptorPublicKey>::from_str("sh(andor(pk(tpubDEN9WSToTyy9ZQfaYqSKfmVqmq1VVLNtYfj3Vkqh67et57eJ5sTKZQBkHqSwPUsoSskJeaYnPttHe2VrkCsKA27kUaN9SDc5zhqeLzKa1rr/0'/<0;1;2;3>/*),older(10000),pk(tpubD8LYfn6njiA2inCoxwM7EuN3cuLVcaHAwLYeups13dpevd3nHLRdK9NdQksWXrhLQVxcUZRpnp5CkJ1FhE61WRAsHxDNAkvGkoQkAeWDYjV/8/<0;1;2>/*)))").unwrap_err();
     }
 
     #[test]
@@ -1677,25 +1576,5 @@ pk(03f28773c2d975288bc7d1d205c3748651b075fbc6610e58cddeeddf8f19405aa8))";
         Desc::from_str(&format!("pkh({})", comp_key)).unwrap();
         Desc::from_str(&format!("pkh({})", uncomp_key)).unwrap();
         Desc::from_str(&format!("pkh({})", x_only_key)).unwrap_err();
-
-        // wpkh tests, uncompressed and x-only keys not supported
-        Desc::from_str(&format!("wpkh({})", comp_key)).unwrap();
-        Desc::from_str(&format!("wpkh({})", uncomp_key)).unwrap_err();
-        Desc::from_str(&format!("wpkh({})", x_only_key)).unwrap_err();
-
-        // Segwitv0 tests, uncompressed and x-only keys not supported
-        Desc::from_str(&format!("wsh(pk({}))", comp_key)).unwrap();
-        Desc::from_str(&format!("wsh(pk({}))", uncomp_key)).unwrap_err();
-        Desc::from_str(&format!("wsh(pk({}))", x_only_key)).unwrap_err();
-
-        // Tap tests, key path
-        Desc::from_str(&format!("tr({})", comp_key)).unwrap();
-        Desc::from_str(&format!("tr({})", uncomp_key)).unwrap_err();
-        Desc::from_str(&format!("tr({})", x_only_key)).unwrap();
-
-        // Tap tests, script path
-        Desc::from_str(&format!("tr({},pk({}))", x_only_key, comp_key)).unwrap();
-        Desc::from_str(&format!("tr({},pk({}))", x_only_key, uncomp_key)).unwrap_err();
-        Desc::from_str(&format!("tr({},pk({}))", x_only_key, x_only_key)).unwrap();
     }
 }
