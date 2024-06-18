@@ -109,6 +109,7 @@ pub trait AssetProvider<Pk: MiniscriptKey> {
 }
 
 /// Wrapper around [`Assets`] that logs every query and value returned
+#[allow(dead_code)]
 #[cfg(feature = "std")]
 pub struct LoggerAssetProvider(Assets);
 
