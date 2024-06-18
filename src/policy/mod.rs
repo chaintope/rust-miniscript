@@ -220,17 +220,12 @@ mod tests {
     use core::str::FromStr;
 
     use tapyrus::Sequence;
-    #[cfg(feature = "compiler")]
-    use sync::Arc;
 
     use super::super::miniscript::context::Segwitv0;
     use super::super::miniscript::Miniscript;
     use super::{Concrete, Liftable, Semantic};
     #[cfg(feature = "compiler")]
-    use crate::descriptor::Tr;
     use crate::prelude::*;
-    #[cfg(feature = "compiler")]
-    use crate::{descriptor::TapTree, Descriptor, Tap};
 
     type ConcretePol = Concrete<String>;
     type SemanticPol = Semantic<String>;
@@ -357,179 +352,6 @@ mod tests {
             ),
             ms_str.lift().unwrap()
         );
-    }
-
-    #[test]
-    #[cfg(feature = "compiler")]
-    fn taproot_compile() {
-        // Trivial single-node compilation
-        let unspendable_key: String = "UNSPENDABLE".to_string();
-        {
-            let policy: Concrete<String> = policy_str!("thresh(2,pk(A),pk(B),pk(C),pk(D))");
-            let descriptor = policy.compile_tr(Some(unspendable_key.clone())).unwrap();
-
-            let ms_compilation: Miniscript<String, Tap> = ms_str!("multi_a(2,A,B,C,D)");
-            let tree: TapTree<String> = TapTree::Leaf(Arc::new(ms_compilation));
-            let expected_descriptor =
-                Descriptor::new_tr(unspendable_key.clone(), Some(tree)).unwrap();
-            assert_eq!(descriptor, expected_descriptor);
-        }
-
-        // Trivial multi-node compilation
-        {
-            let policy: Concrete<String> = policy_str!("or(and(pk(A),pk(B)),and(pk(C),pk(D)))");
-            let descriptor = policy.compile_tr(Some(unspendable_key.clone())).unwrap();
-
-            let left_ms_compilation: Arc<Miniscript<String, Tap>> =
-                Arc::new(ms_str!("and_v(v:pk(C),pk(D))"));
-            let right_ms_compilation: Arc<Miniscript<String, Tap>> =
-                Arc::new(ms_str!("and_v(v:pk(A),pk(B))"));
-
-            let left = TapTree::Leaf(left_ms_compilation);
-            let right = TapTree::Leaf(right_ms_compilation);
-            let tree = TapTree::combine(left, right);
-
-            let expected_descriptor =
-                Descriptor::new_tr(unspendable_key.clone(), Some(tree)).unwrap();
-            assert_eq!(descriptor, expected_descriptor);
-        }
-
-        {
-            // Invalid policy compilation (Duplicate PubKeys)
-            let policy: Concrete<String> = policy_str!("or(and(pk(A),pk(B)),and(pk(A),pk(D)))");
-            let descriptor = policy.compile_tr(Some(unspendable_key.clone()));
-
-            assert_eq!(descriptor.unwrap_err().to_string(), "Policy contains duplicate keys");
-        }
-
-        // Non-trivial multi-node compilation
-        {
-            let node_policies = [
-                "and(pk(A),pk(B))",
-                "and(pk(C),older(12960))",
-                "pk(D)",
-                "pk(E)",
-                "thresh(3,pk(F),pk(G),pk(H))",
-                "and(and(or(2@pk(I),1@pk(J)),or(1@pk(K),20@pk(L))),pk(M))",
-                "pk(N)",
-            ];
-
-            // Floating-point precision errors cause the minor errors
-            let node_probabilities: [f64; 7] =
-                [0.12000002, 0.28, 0.08, 0.12, 0.19, 0.18999998, 0.02];
-
-            let policy: Concrete<String> = policy_str!(
-                "{}",
-                &format!(
-                    "or(4@or(3@{},7@{}),6@thresh(1,or(4@{},6@{}),{},or(9@{},1@{})))",
-                    node_policies[0],
-                    node_policies[1],
-                    node_policies[2],
-                    node_policies[3],
-                    node_policies[4],
-                    node_policies[5],
-                    node_policies[6]
-                )
-            );
-            let descriptor = policy.compile_tr(Some(unspendable_key.clone())).unwrap();
-
-            let mut sorted_policy_prob = node_policies
-                .iter()
-                .zip(node_probabilities.iter())
-                .collect::<Vec<_>>();
-            sorted_policy_prob.sort_by(|a, b| (a.1).partial_cmp(&b.1).unwrap());
-            let sorted_policies = sorted_policy_prob
-                .into_iter()
-                .map(|(x, _prob)| x)
-                .collect::<Vec<_>>();
-
-            // Generate TapTree leaves compilations from the given sub-policies
-            let node_compilations = sorted_policies
-                .into_iter()
-                .map(|x| {
-                    let leaf_policy: Concrete<String> = policy_str!("{}", x);
-                    TapTree::Leaf(Arc::from(leaf_policy.compile::<Tap>().unwrap()))
-                })
-                .collect::<Vec<_>>();
-
-            // Arrange leaf compilations (acc. to probabilities) using huffman encoding into a TapTree
-            let tree = TapTree::combine(
-                TapTree::combine(node_compilations[4].clone(), node_compilations[5].clone()),
-                TapTree::combine(
-                    TapTree::combine(
-                        TapTree::combine(
-                            node_compilations[0].clone(),
-                            node_compilations[1].clone(),
-                        ),
-                        node_compilations[3].clone(),
-                    ),
-                    node_compilations[6].clone(),
-                ),
-            );
-
-            let expected_descriptor = Descriptor::new_tr("E".to_string(), Some(tree)).unwrap();
-            assert_eq!(descriptor, expected_descriptor);
-        }
-    }
-
-    #[test]
-    #[cfg(feature = "compiler")]
-    fn experimental_taproot_compile() {
-        let unspendable_key = "UNSPEND".to_string();
-
-        {
-            let pol = Concrete::<String>::from_str(
-                "thresh(7,pk(A),pk(B),pk(C),pk(D),pk(E),pk(F),pk(G),pk(H))",
-            )
-            .unwrap();
-            let desc = pol
-                .compile_tr_private_experimental(Some(unspendable_key.clone()))
-                .unwrap();
-            let expected_desc = Descriptor::Tr(
-                Tr::<String>::from_str(
-                    "tr(UNSPEND ,{
-                {
-                    {multi_a(7,B,C,D,E,F,G,H),multi_a(7,A,C,D,E,F,G,H)},
-                    {multi_a(7,A,B,D,E,F,G,H),multi_a(7,A,B,C,E,F,G,H)}
-                },
-                {
-                    {multi_a(7,A,B,C,D,F,G,H),multi_a(7,A,B,C,D,E,G,H)}
-                   ,{multi_a(7,A,B,C,D,E,F,H),multi_a(7,A,B,C,D,E,F,G)}
-                }})"
-                    .replace(&['\t', ' ', '\n'][..], "")
-                    .as_str(),
-                )
-                .unwrap(),
-            );
-            assert_eq!(desc, expected_desc);
-        }
-
-        {
-            let pol =
-                Concrete::<String>::from_str("thresh(3,pk(A),pk(B),pk(C),pk(D),pk(E))").unwrap();
-            let desc = pol
-                .compile_tr_private_experimental(Some(unspendable_key.clone()))
-                .unwrap();
-            let expected_desc = Descriptor::Tr(
-                Tr::<String>::from_str(
-                    "tr(UNSPEND,
-                    {{
-                        {multi_a(3,A,D,E),multi_a(3,A,C,E)},
-                        {multi_a(3,A,C,D),multi_a(3,A,B,E)}\
-                    },
-                    {
-                        {multi_a(3,A,B,D),multi_a(3,A,B,C)},
-                        {
-                            {multi_a(3,C,D,E),multi_a(3,B,D,E)},
-                            {multi_a(3,B,C,E),multi_a(3,B,C,D)}
-                    }}})"
-                        .replace(&['\t', ' ', '\n'][..], "")
-                        .as_str(),
-                )
-                .unwrap(),
-            );
-            assert_eq!(desc, expected_desc);
-        }
     }
 }
 

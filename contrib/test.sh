@@ -2,8 +2,7 @@
 
 set -ex
 
-#FEATURES="compiler serde rand base64"
-FEATURES="serde rand base64"
+FEATURES="compiler serde rand base64"
 
 cargo --version
 rustc --version
