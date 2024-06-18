@@ -116,12 +116,8 @@ pub enum DescriptorCtx<Pk> {
     Bare,
     /// See docs for [`Descriptor::Sh`].
     Sh,
-    /// See docs for [`Descriptor::Wsh`].
     Wsh,
-    /// See docs for [`Descriptor::Wsh`].
     ShWsh,
-    /// [`Descriptor::Tr`] where the `Option<Pk>` corresponds to the internal key if no
-    /// internal key can be inferred from the given policy.
     Tr(Option<Pk>),
 }
 
