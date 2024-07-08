@@ -737,7 +737,7 @@ impl PsbtExt for Psbt {
             .ok_or(UtxoUpdateError::MissingInputUtxo)?;
 
         if let Some(non_witness_utxo) = &input.non_witness_utxo {
-            if txin.previous_output.txid != non_witness_utxo.txid() {
+            if txin.previous_output.txid != non_witness_utxo.malfix_txid() {
                 return Err(UtxoUpdateError::UtxoCheck);
             }
         }
@@ -1449,7 +1449,7 @@ mod tests {
             version: transaction::Version::ONE,
             lock_time: absolute::LockTime::ZERO,
             input: vec![TxIn {
-                previous_output: OutPoint { txid: non_witness_utxo.txid(), vout: 0 },
+                previous_output: OutPoint { txid: non_witness_utxo.malfix_txid(), vout: 0 },
                 ..Default::default()
             }],
             output: vec![],
